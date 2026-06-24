@@ -20,6 +20,20 @@ const ROLE_ICON_URLS: Record<string, string> = {
   Support: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-utility.png",
 };
 
+// Per-role accent colors used for badge backgrounds and active highlights
+const ROLE_COLORS: Record<string, string> = {
+  Top:     "#C89B3C",
+  Jungle:  "#0AC8B9",
+  Mid:     "#9AA4DB",
+  ADC:     "#FF4E50",
+  Support: "#F178B6",
+};
+
+// Icon filter: active = gold tint, inactive = visible silver-grey, badge = pure white
+const FILTER_ACTIVE   = "brightness(0) saturate(100%) invert(75%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(1.1)";
+const FILTER_INACTIVE = "brightness(0) invert(0.65)";
+const FILTER_WHITE    = "brightness(0) invert(1)";
+
 function RoleImg({ role, size = 20, active = false }: { role: string; size?: number; active?: boolean }) {
   const url = ROLE_ICON_URLS[role];
   if (!url) return <span style={{ fontSize: size * 0.9, lineHeight: 1 }}>★</span>;
@@ -30,13 +44,35 @@ function RoleImg({ role, size = 20, active = false }: { role: string; size?: num
       width={size}
       height={size}
       className="object-contain select-none"
-      style={{
-        filter: active
-          ? "brightness(0) saturate(100%) invert(75%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(1.1)"
-          : "brightness(0) invert(0.45)",
-      }}
+      style={{ filter: active ? FILTER_ACTIVE : FILTER_INACTIVE }}
       onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
     />
+  );
+}
+
+// Colored pill badge: white icon on role-tinted circle
+function RoleBadge({ role, size = 20 }: { role: string; size?: number }) {
+  const url   = ROLE_ICON_URLS[role];
+  const color = ROLE_COLORS[role] ?? "#5B7A8C";
+  const imgSz = Math.round(size * 0.62);
+  return (
+    <div
+      className="rounded-full flex items-center justify-center shrink-0"
+      style={{
+        width: size, height: size,
+        background: color + "33",
+        border: `1.5px solid ${color}99`,
+        boxShadow: `0 0 6px ${color}44`,
+      }}
+    >
+      {url
+        ? <img src={url} alt={role} width={imgSz} height={imgSz}
+            className="object-contain select-none"
+            style={{ filter: FILTER_WHITE }}
+            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+        : <span style={{ fontSize: imgSz * 0.8, lineHeight: 1, color }}>★</span>
+      }
+    </div>
   );
 }
 
@@ -157,7 +193,9 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
             >
               {r === "All"
                 ? <span style={{ fontSize: 16, color: leftRole === "All" ? "#C89B3C" : "#3a4a5a" }}>★</span>
-                : <RoleImg role={r} size={22} active={leftRole === r} />
+                : leftRole === r
+                  ? <RoleBadge role={r} size={26} />
+                  : <RoleImg role={r} size={22} active={false} />
               }
             </button>
           ))}
@@ -194,8 +232,8 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                       />
                     </div>
                     {/* Role icon badge */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#060E1A] border border-[#1E2D3D] flex items-center justify-center">
-                      <RoleImg role={c.primaryRole} size={11} active={false} />
+                    <div className="absolute -bottom-1 -right-1">
+                      <RoleBadge role={c.primaryRole} size={20} />
                     </div>
                   </div>
                   <span className="text-[8px] font-['Cinzel'] text-[#5B7A8C] group-hover:text-[#C89B3C] transition-colors text-center leading-tight w-full truncate">
@@ -230,7 +268,9 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
             >
               {r === "All"
                 ? <span style={{ fontSize: 15, color: rightRole === "All" ? "#C89B3C" : "#3a4a5a" }}>★</span>
-                : <RoleImg role={r} size={18} active={rightRole === r} />
+                : rightRole === r
+                  ? <RoleBadge role={r} size={22} />
+                  : <RoleImg role={r} size={18} active={false} />
               }
               <span className="hidden lg:inline">{ROLE_LABEL_MAP[r]}</span>
             </button>
@@ -318,7 +358,7 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                       {/* Role icon */}
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center">
-                          <RoleImg role={c.primaryRole} size={20} />
+                          <RoleBadge role={c.primaryRole} size={24} />
                         </div>
                       </td>
 
