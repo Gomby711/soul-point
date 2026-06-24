@@ -3,6 +3,7 @@ import { Search, ArrowUp, ArrowDown } from "lucide-react";
 import { winRateColor } from "@/lib/utils";
 import { useChampionData, type ChampionInfo, type PrimaryRole } from "@/hooks/useChampionData";
 import { ChampionBuildSubPage } from "@/views/ChampionBuildSubPage";
+import { RoleIcon, RoleBadge, ROLE_COLORS } from "@/components/common/RoleIcon";
 
 // ── Role definitions ───────────────────────────────────────────
 const ROLE_TABS: (PrimaryRole | "All")[] = ["All", "Top", "Jungle", "Mid", "ADC", "Support"];
@@ -10,73 +11,6 @@ const ROLE_TABS: (PrimaryRole | "All")[] = ["All", "Top", "Jungle", "Mid", "ADC"
 const ROLE_LABEL_MAP: Record<string, string> = {
   All: "All", Top: "Top", Jungle: "Jungle", Mid: "Middle", ADC: "Bottom", Support: "Support",
 };
-
-// CDragon position icons — in-game lane icons including fill
-const CDRA = "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons";
-const ROLE_ICON_URLS: Record<string, string> = {
-  All:     `${CDRA}/position-fill.png`,
-  Top:     `${CDRA}/position-top.png`,
-  Jungle:  `${CDRA}/position-jungle.png`,
-  Mid:     `${CDRA}/position-middle.png`,
-  ADC:     `${CDRA}/position-bottom.png`,
-  Support: `${CDRA}/position-utility.png`,
-};
-
-// Per-role accent colors used for badge backgrounds and active highlights
-const ROLE_COLORS: Record<string, string> = {
-  All:     "#C89B3C",
-  Top:     "#C89B3C",
-  Jungle:  "#0AC8B9",
-  Mid:     "#9AA4DB",
-  ADC:     "#FF4E50",
-  Support: "#F178B6",
-};
-
-// Icon filter: active = gold tint, inactive = visible silver-grey, badge = pure white
-const FILTER_ACTIVE   = "brightness(0) saturate(100%) invert(75%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(1.1)";
-const FILTER_INACTIVE = "brightness(0) invert(0.65)";
-const FILTER_WHITE    = "brightness(0) invert(1)";
-
-function RoleImg({ role, size = 20, active = false }: { role: string; size?: number; active?: boolean }) {
-  const url = ROLE_ICON_URLS[role];
-  if (!url) return null;
-  return (
-    <img
-      src={url}
-      alt={role}
-      width={size}
-      height={size}
-      className="object-contain select-none"
-      style={{ filter: active ? FILTER_ACTIVE : FILTER_INACTIVE }}
-      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-    />
-  );
-}
-
-// Colored pill badge: white icon on role-tinted circle
-function RoleBadge({ role, size = 20 }: { role: string; size?: number }) {
-  const url   = ROLE_ICON_URLS[role];
-  const color = ROLE_COLORS[role] ?? "#5B7A8C";
-  const imgSz = Math.round(size * 0.62);
-  return (
-    <div
-      className="rounded-full flex items-center justify-center shrink-0"
-      style={{
-        width: size, height: size,
-        background: color + "33",
-        border: `1.5px solid ${color}99`,
-        boxShadow: `0 0 6px ${color}44`,
-      }}
-    >
-      {url && (
-        <img src={url} alt={role} width={imgSz} height={imgSz}
-          className="object-contain select-none"
-          style={{ filter: FILTER_WHITE }}
-          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-      )}
-    </div>
-  );
-}
 
 const TIER_COLORS: Record<string, string> = {
   "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C", C: "#3a4a5a",
@@ -195,7 +129,7 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
             >
               {leftRole === r
                 ? <RoleBadge role={r} size={26} />
-                : <RoleImg role={r} size={22} active={false} />
+                : <RoleIcon role={r} size={20} color="#3a4a5a" />
               }
             </button>
           ))}
@@ -268,7 +202,7 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
             >
               {rightRole === r
                 ? <RoleBadge role={r} size={22} />
-                : <RoleImg role={r} size={18} active={false} />
+                : <RoleIcon role={r} size={18} color="#3a4a5a" />
               }
               <span className="hidden lg:inline">{ROLE_LABEL_MAP[r]}</span>
             </button>

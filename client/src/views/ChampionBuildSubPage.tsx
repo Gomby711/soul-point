@@ -5,6 +5,7 @@ import { getBuild, type BuildEntry } from "@/data/builds";
 import { useRuneData, PATH_COLORS, type RunePath } from "@/hooks/useRuneData";
 import { getDragonVersion, fetchOPGGChampionAnalysis } from "@/api/client";
 import { winRateColor } from "@/lib/utils";
+import { RoleIcon } from "@/components/common/RoleIcon";
 
 // ── DDragon version ────────────────────────────────────────────
 function useVersion() {
@@ -192,15 +193,6 @@ function useCounters(champion: ChampionInfo, champions: ChampionInfo[]) {
   );
   return { weakAgainst, strongAgainst };
 }
-
-// ── Role icons ─────────────────────────────────────────────────
-const ROLE_ICONS: Record<string, string> = {
-  Top:     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-top.png",
-  Jungle:  "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-jungle.png",
-  Mid:     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-middle.png",
-  ADC:     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-bottom.png",
-  Support: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-utility.png",
-};
 
 // ── Jungle camp icons ──────────────────────────────────────────
 const CAMPS: Record<string, { label: string; color: string; url: string }> = {
@@ -779,7 +771,6 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
 
   const isJungler = champion.primaryRole === "Jungle";
   const patch     = version.split(".").slice(0, 2).join(".");
-  const roleUrl   = ROLE_ICONS[champion.primaryRole];
   const tierColor = TIER_COLORS[champion.tier] ?? "#A0B4C8";
 
   if (!build) {
@@ -827,11 +818,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h1 className="text-3xl font-black text-[#C8AA6E] font-['Cinzel'] tracking-widest gold-text">{champion.name}</h1>
-              {roleUrl && (
-                <img src={roleUrl} alt={champion.primaryRole} width={22} height={22}
-                  className="object-contain"
-                  style={{ filter: "brightness(0) saturate(100%) invert(75%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(1.1)" }} />
-              )}
+              <RoleIcon role={champion.primaryRole} size={22} color="#C8AA6E" />
               <span className="text-xs text-[#5B7A8C] font-['Cinzel'] tracking-widest">{champion.primaryRole}</span>
             </div>
             <div className="text-sm text-[#5B7A8C] italic mb-3">{champion.title}</div>
