@@ -91,12 +91,12 @@ export function parseOPGGClassNotation(text: string): unknown {
 // ── Champion name → OP.GG UPPER_SNAKE_CASE ───────────────────
 function toOpggChampion(name: string): string {
   return name
+    .replace(/\s*&\s*.+$/, "")    // strip secondary name (Nunu & Willump → Nunu)
     .toUpperCase()
-    .replace(/['’]/g, "")     // Kai'Sa → KAISA
-    .replace(/&/g, "AND")          // Nunu & Willump → NUNU AND WILLUMP
+    .replace(/[‘’]/g, "")          // Kai’Sa → KAISA
     .replace(/\./g, "")            // Dr. Mundo → DR MUNDO
-    .replace(/[^A-Z0-9]+/g, "_")  // spaces/symbols → _
-    .replace(/^_+|_+$/g, "");     // trim leading/trailing _
+    .replace(/[^A-Z0-9]+/g, "_")  // spaces/other → _
+    .replace(/^_+|_+$/g, "");     // trim _
 }
 
 // ── Position & tier mappings ──────────────────────────────────
