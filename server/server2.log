@@ -1,0 +1,8 @@
+
+> soul-point-server@0.0.1 dev
+> tsx watch src/index.ts
+
+
+  ⚔  Soul Point API — http://localhost:3001
+  ✓  Riot API key configured
+
