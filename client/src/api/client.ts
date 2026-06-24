@@ -128,6 +128,31 @@ export function getSummonerSpellImage(spellId: number): string {
   return `https://ddragon.leagueoflegends.com/cdn/14.9.1/img/spell/${spellMap[spellId] ?? "SummonerFlash"}.png`;
 }
 
+// ── OP.GG Build data (via MCP proxy) ─────────────────────────
+
+export async function fetchOPGGChampionAnalysis(
+  championName: string,
+  position: string,
+  rankKey?: string,
+): Promise<unknown> {
+  const params = new URLSearchParams();
+  if (rankKey) params.set("tier", rankKey);
+  const qs = params.toString();
+  return get(
+    `/opgg/champion/${encodeURIComponent(championName)}/${encodeURIComponent(position)}${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export async function fetchOPGGMetaChampions(
+  position: string,
+  rankKey?: string,
+): Promise<unknown> {
+  const params = new URLSearchParams();
+  if (rankKey) params.set("tier", rankKey);
+  const qs = params.toString();
+  return get(`/opgg/meta/${encodeURIComponent(position)}${qs ? `?${qs}` : ""}`);
+}
+
 // ── Leaderboard ──────────────────────────────────────────────
 
 export function fetchLeaderboard(region: Region, tier: string = "CHALLENGER"): Promise<{

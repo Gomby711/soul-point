@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import NodeCache from "node-cache";
 import { platformUrl, regionalUrl, riotFetch } from "./riot.js";
+import { fetchChampionAnalysis, fetchLaneMetaChampions, fetchChampionSynergies } from "./opgg.js";
 
 const app  = express();
 const PORT = process.env.PORT ?? 3001;
@@ -50,7 +51,7 @@ function requireKey(res: express.Response): boolean {
 app.get("/api/account/:region/:gameName/:tagLine", cached(300), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, gameName, tagLine } = req.params;
+    const { region, gameName, tagLine } = req.params as Record<string, string>;
     const url = `${regionalUrl(region)}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
@@ -61,7 +62,7 @@ app.get("/api/account/:region/:gameName/:tagLine", cached(300), async (req, res)
 app.get("/api/summoner/:region/:puuid", cached(300), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, puuid } = req.params;
+    const { region, puuid } = req.params as Record<string, string>;
     const url = `${platformUrl(region)}/lol/summoner/v4/summoners/by-puuid/${puuid}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
@@ -72,7 +73,7 @@ app.get("/api/summoner/:region/:puuid", cached(300), async (req, res) => {
 app.get("/api/league/:region/:summonerId", cached(120), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, summonerId } = req.params;
+    const { region, summonerId } = req.params as Record<string, string>;
     const url = `${platformUrl(region)}/lol/league/v4/entries/by-summoner/${summonerId}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
@@ -83,7 +84,7 @@ app.get("/api/league/:region/:summonerId", cached(120), async (req, res) => {
 app.get("/api/matches/:region/:puuid/ids", cached(60), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, puuid } = req.params;
+    const { region, puuid } = req.params as Record<string, string>;
     const { queue, count = "20", start = "0" } = req.query as Record<string, string>;
     const params = new URLSearchParams({ count, start });
     if (queue) params.set("queue", queue);
@@ -97,7 +98,7 @@ app.get("/api/matches/:region/:puuid/ids", cached(60), async (req, res) => {
 app.get("/api/matches/:region/match/:matchId", cached(3600), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, matchId } = req.params;
+    const { region, matchId } = req.params as Record<string, string>;
     const url = `${regionalUrl(region)}/lol/match/v5/matches/${matchId}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
@@ -108,7 +109,7 @@ app.get("/api/matches/:region/match/:matchId", cached(3600), async (req, res) =>
 app.get("/api/mastery/:region/:puuid", cached(300), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, puuid } = req.params;
+    const { region, puuid } = req.params as Record<string, string>;
     const { count = "20" } = req.query as Record<string, string>;
     const url = `${platformUrl(region)}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${count}`;
     const data = await riotFetch(url, KEY);
@@ -120,7 +121,7 @@ app.get("/api/mastery/:region/:puuid", cached(300), async (req, res) => {
 app.get("/api/challenges/:region/:puuid", cached(300), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, puuid } = req.params;
+    const { region, puuid } = req.params as Record<string, string>;
     const url = `${platformUrl(region)}/lol/challenges/v1/player-data/${puuid}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
@@ -131,7 +132,7 @@ app.get("/api/challenges/:region/:puuid", cached(300), async (req, res) => {
 app.get("/api/leaderboard/:region/:tier", cached(300), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, tier } = req.params;
+    const { region, tier } = req.params as Record<string, string>;
     const queue = "RANKED_SOLO_5x5";
     let url: string;
     if (tier === "CHALLENGER") {
@@ -150,7 +151,7 @@ app.get("/api/leaderboard/:region/:tier", cached(300), async (req, res) => {
 app.get("/api/tft/league/:region/:summonerId", cached(120), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, summonerId } = req.params;
+    const { region, summonerId } = req.params as Record<string, string>;
     const url = `${platformUrl(region)}/tft/league/v1/entries/by-summoner/${summonerId}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
@@ -161,7 +162,7 @@ app.get("/api/tft/league/:region/:summonerId", cached(120), async (req, res) => 
 app.get("/api/tft/matches/:region/:puuid/ids", cached(60), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, puuid } = req.params;
+    const { region, puuid } = req.params as Record<string, string>;
     const { count = "20" } = req.query as Record<string, string>;
     const url = `${regionalUrl(region)}/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}`;
     const data = await riotFetch(url, KEY);
@@ -173,9 +174,37 @@ app.get("/api/tft/matches/:region/:puuid/ids", cached(60), async (req, res) => {
 app.get("/api/tft/matches/:region/match/:matchId", cached(3600), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, matchId } = req.params;
+    const { region, matchId } = req.params as Record<string, string>;
     const url = `${regionalUrl(region)}/tft/match/v1/matches/${matchId}`;
     const data = await riotFetch(url, KEY);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── OP.GG MCP proxy routes ────────────────────────────────────
+
+app.get("/api/opgg/champion/:name/:position", cached(300), async (req, res) => {
+  try {
+    const { name, position } = req.params as Record<string, string>;
+    const { tier } = req.query as Record<string, string>;
+    const data = await fetchChampionAnalysis(name, position, tier);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+app.get("/api/opgg/meta/:position", cached(300), async (req, res) => {
+  try {
+    const { position } = req.params as Record<string, string>;
+    const { tier } = req.query as Record<string, string>;
+    const data = await fetchLaneMetaChampions(position, tier);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+app.get("/api/opgg/synergies/:name/:position", cached(600), async (req, res) => {
+  try {
+    const { name, position } = req.params as Record<string, string>;
+    const data = await fetchChampionSynergies(name, position);
     res.json(data);
   } catch (e) { handleError(e, res); }
 });

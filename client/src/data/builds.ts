@@ -72,13 +72,12 @@ const ITEMS: Record<string, ItemRef> = {
   voidStaff:     { id: 3135, name: "Void Staff"             },
   zhonyas:       { id: 3157, name: "Zhonya's Hourglass"     },
   morell:        { id: 3165, name: "Morellonomicon"          },
-  cryptbloom:    { id: 6617, name: "Cryptbloom"             },
+  cryptbloom:    { id: 6620, name: "Cryptbloom"             },
   nashors:       { id: 3115, name: "Nashor's Tooth"         },
   rylais:        { id: 3116, name: "Rylai's Crystal Scepter"},
   everfrost:     { id: 3907, name: "Everfrost"              },
   banshees:      { id: 3102, name: "Banshee's Veil"         },
   seraPh:        { id: 3040, name: "Seraph's Embrace"       },
-  riftmaker:     { id: 6617, name: "Riftmaker"              },
   horizon:       { id: 4628, name: "Horizon Focus"          },
   // ADC
   ie:            { id: 3031, name: "Infinity Edge"           },
@@ -113,7 +112,7 @@ const ITEMS: Record<string, ItemRef> = {
   ibg:           { id: 3110, name: "Iceborn Gauntlet"       },
   fon:           { id: 4401, name: "Force of Nature"        },
   heartsteel:    { id: 3459, name: "Heartsteel"             },
-  jaksho:        { id: 6617, name: "Jak'Sho, The Protean"  },
+  jaksho:        { id: 6656, name: "Jak'Sho, The Protean"  },
   abyssalMask:   { id: 3001, name: "Abyssal Mask"           },
   // AD Assassin
   duskblade:     { id: 6691, name: "Duskblade of Draktharr"},
@@ -130,7 +129,7 @@ const ITEMS: Record<string, ItemRef> = {
   mandate:       { id: 4005, name: "Imperial Mandate"       },
   ardent:        { id: 3504, name: "Ardent Censer"          },
   staffFlow:     { id: 3850, name: "Staff of Flowing Water" },
-  moonstone:     { id: 6617, name: "Moonstone Renewer"      },
+  moonstone:     { id: 6616, name: "Moonstone Renewer"      },
   // Starters
   dorans:        { id: 1055, name: "Doran's Blade"          },
   doransRing:    { id: 1056, name: "Doran's Ring"           },
@@ -369,7 +368,7 @@ const OPTIONAL_ITEMS: Record<BuildType, ItemRef[]> = {
   ENCHANTER:       [ITEMS.zekes, ITEMS.knightsVow, ITEMS.cryptbloom, ITEMS.banshees, ITEMS.morell],
   JUNGLE_ASSASSIN: [ITEMS.axiom, ITEMS.maw, ITEMS.collector, ITEMS.witEnd, ITEMS.trinity],
   JUNGLE_FIGHTER:  [ITEMS.shojin, ITEMS.hydra, ITEMS.fon, ITEMS.deathsDance, ITEMS.jaksho],
-  AP_FIGHTER:      [ITEMS.seraPh, ITEMS.rylais, ITEMS.banshees, ITEMS.cryptbloom, ITEMS.everfrost],
+  AP_FIGHTER:      [ITEMS.seraPh, ITEMS.rylais, ITEMS.banshees, ITEMS.cryptbloom, ITEMS.nashors],
 };
 
 // ── Build variations per archetype ───────────────────────────
@@ -517,13 +516,13 @@ const BUILD_VARIANTS: Record<BuildType, BuildVariant[]> = {
   AP_FIGHTER: [
     { name: "Nashor's",   desc: "Auto-attack AP hybrid",
       boots: ITEMS.ionian, startItems: [ITEMS.doransRing],
-      items: [ITEMS.nashors, ITEMS.riftmaker, ITEMS.deathcap, ITEMS.voidStaff, ITEMS.zhonyas] },
+      items: [ITEMS.nashors, ITEMS.rylais, ITEMS.deathcap, ITEMS.voidStaff, ITEMS.zhonyas] },
     { name: "Burst",      desc: "Full AP burst fighter",
       boots: ITEMS.sorcShoes, startItems: [ITEMS.doransRing],
       items: [ITEMS.shadowflame, ITEMS.deathcap, ITEMS.voidStaff, ITEMS.zhonyas, ITEMS.banshees] },
     { name: "Tanky AP",   desc: "Bruiser AP hybrid",
       boots: ITEMS.mercTreads, startItems: [ITEMS.doransRing],
-      items: [ITEMS.riftmaker, ITEMS.abyssalMask, ITEMS.deathcap, ITEMS.warmogs, ITEMS.voidStaff] },
+      items: [ITEMS.rylais, ITEMS.abyssalMask, ITEMS.deathcap, ITEMS.warmogs, ITEMS.voidStaff] },
   ],
 };
 
