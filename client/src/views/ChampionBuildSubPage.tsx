@@ -4,6 +4,7 @@ import { type ChampionInfo } from "@/hooks/useChampionData";
 import { getBuild, type BuildEntry } from "@/data/builds";
 import { useRuneData, PATH_COLORS, type RunePath } from "@/hooks/useRuneData";
 import { getDragonVersion, fetchOPGGChampionAnalysis } from "@/api/client";
+import { winRateColor } from "@/lib/utils";
 
 // ── DDragon version ────────────────────────────────────────────
 function useVersion() {
@@ -192,9 +193,6 @@ function useCounters(champion: ChampionInfo, champions: ChampionInfo[]) {
   return { weakAgainst, strongAgainst };
 }
 
-// ── Win-rate color ─────────────────────────────────────────────
-const wrColor = (v: number) => v >= 52 ? "#22c55e" : v >= 48 ? "#9d9db8" : "#e84057";
-
 // ── Role icons ─────────────────────────────────────────────────
 const ROLE_ICONS: Record<string, string> = {
   Top:     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-top.png",
@@ -217,7 +215,7 @@ const BLUE_PATH = ["Blue", "Gromp", "Wolves", "Raptors", "Red", "Krugs"];
 const RED_PATH  = ["Red",  "Krugs", "Raptors", "Wolves",  "Blue", "Gromp"];
 
 function CampDot({ camp }: { camp: string }) {
-  const def = CAMPS[camp] ?? { label: camp.slice(0, 4), color: "#5e5f7a", url: "" };
+  const def = CAMPS[camp] ?? { label: camp.slice(0, 4), color: "#5B7A8C", url: "" };
   const [ok, setOk] = useState(true);
   return (
     <div className="group relative shrink-0">
@@ -227,9 +225,9 @@ function CampDot({ camp }: { camp: string }) {
           ? <img src={def.url} alt={camp} className="w-7 h-7 object-contain" onError={() => setOk(false)} />
           : def.label}
       </div>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#0d0e14] border
-        border-[#2e3048] px-2 py-0.5 text-[10px] text-white whitespace-nowrap
-        opacity-0 group-hover:opacity-100 pointer-events-none z-50 rounded">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#010A13] border
+        border-[#1E2D3D] px-2 py-0.5 text-[10px] text-[#C8AA6E] whitespace-nowrap
+        opacity-0 group-hover:opacity-100 pointer-events-none z-50">
         {camp}
       </div>
     </div>
@@ -238,21 +236,21 @@ function CampDot({ camp }: { camp: string }) {
 
 function JunglePaths({ games }: { games: number }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {[
-        { side: "Blue Side", path: BLUE_PATH, g: Math.floor(games * 0.58), color: "#5383e8" },
-        { side: "Red Side",  path: RED_PATH,  g: Math.floor(games * 0.42), color: "#e84057" },
+        { side: "Blue Side", path: BLUE_PATH, g: Math.floor(games * 0.58), color: "#0AC8B9" },
+        { side: "Red Side",  path: RED_PATH,  g: Math.floor(games * 0.42), color: "#FF4E50" },
       ].map(({ side, path, g, color }) => (
-        <div key={side} className="bg-[#13141a] rounded-xl p-3">
+        <div key={side} className="bg-[#010A13] border border-[#1E2D3D] p-3">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-xs font-semibold" style={{ color }}>{side}</span>
-            <span className="text-[10px] text-[#5e5f7a]">{g.toLocaleString()} games</span>
+            <span className="text-xs font-['Cinzel'] font-semibold tracking-wider" style={{ color }}>{side}</span>
+            <span className="text-[10px] text-[#5B7A8C] font-mono">{g.toLocaleString()} games</span>
           </div>
           <div className="flex items-center gap-1 flex-wrap">
             {path.map((camp, i) => (
               <span key={i} className="flex items-center gap-1">
                 <CampDot camp={camp} />
-                {i < path.length - 1 && <ChevronRight className="w-3 h-3 text-[#2e3048] shrink-0" />}
+                {i < path.length - 1 && <ChevronRight className="w-3 h-3 text-[#1E2D3D] shrink-0" />}
               </span>
             ))}
           </div>
@@ -266,7 +264,7 @@ function JunglePaths({ games }: { games: number }) {
 function ItemImg({ id, name, version, size = 40 }: { id: number; name: string; version: string; size?: number }) {
   return (
     <div className="group relative shrink-0">
-      <div className="rounded-md overflow-hidden border border-[#3a3b4c] bg-[#13141a]"
+      <div className="overflow-hidden border border-[#1E2D3D] bg-[#010A13]"
         style={{ width: size, height: size }}>
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/item/${id}.png`}
@@ -276,9 +274,9 @@ function ItemImg({ id, name, version, size = 40 }: { id: number; name: string; v
           onError={e => { (e.target as HTMLImageElement).style.opacity = "0.1"; }}
         />
       </div>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#0d0e14] border
-        border-[#3a3b4c] px-2 py-1 text-[10px] text-white whitespace-nowrap
-        opacity-0 group-hover:opacity-100 pointer-events-none z-50 rounded">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#010A13] border
+        border-[#1E2D3D] px-2 py-1 text-[10px] text-[#C8AA6E] whitespace-nowrap
+        opacity-0 group-hover:opacity-100 pointer-events-none z-50">
         {name}
       </div>
     </div>
@@ -295,7 +293,7 @@ const SPELL_KEYS: Record<string, string> = {
 function SpellImg({ name, version, size = 44 }: { name: string; version: string; size?: number }) {
   return (
     <div className="group relative shrink-0">
-      <div className="rounded-md overflow-hidden border border-[#3a3b4c]" style={{ width: size, height: size }}>
+      <div className="overflow-hidden border border-[#785A28]" style={{ width: size, height: size }}>
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${SPELL_KEYS[name] ?? "SummonerFlash"}.png`}
           alt={name}
@@ -303,33 +301,33 @@ function SpellImg({ name, version, size = 44 }: { name: string; version: string;
           onError={e => { (e.target as HTMLImageElement).style.opacity = "0.2"; }}
         />
       </div>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#0d0e14] border
-        border-[#3a3b4c] px-2 py-1 text-[10px] text-white whitespace-nowrap
-        opacity-0 group-hover:opacity-100 pointer-events-none z-50 rounded">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#010A13] border
+        border-[#1E2D3D] px-2 py-1 text-[10px] text-[#C8AA6E] whitespace-nowrap
+        opacity-0 group-hover:opacity-100 pointer-events-none z-50">
         {name}
       </div>
     </div>
   );
 }
 
-// ── Rune icon ──────────────────────────────────────────────────
+// ── Rune icon (individual cell) ────────────────────────────────
 function RuneIcon({
-  iconPath, name, size = 32, selected = false, dimmed = false, pathColor,
+  iconPath, name, size = 40, selected = false, dimmed = false, pathColor,
 }: {
   iconPath: string; name: string; size?: number;
   selected?: boolean; dimmed?: boolean; pathColor?: string;
 }) {
-  const accent = pathColor ?? "#5383e8";
+  const accent = pathColor ?? "#C89B3C";
   return (
-    <div className="group relative shrink-0" style={{ opacity: dimmed ? 0.2 : 1 }}>
+    <div className="group relative shrink-0 flex flex-col items-center gap-1" style={{ opacity: dimmed ? 0.2 : 1 }}>
       <div
         className="rounded-full overflow-hidden flex items-center justify-center transition-all"
         style={{
           width: size, height: size,
-          background: selected ? accent + "22" : "rgba(13,14,20,0.5)",
-          border: selected ? `2px solid ${accent}` : "1px solid #2e3048",
+          background: selected ? accent + "22" : "rgba(1,10,19,0.5)",
+          border: selected ? `2px solid ${accent}` : "1px solid #1E2D3D",
           filter: dimmed ? "grayscale(1)" : "none",
-          boxShadow: selected ? `0 0 10px ${accent}55` : "none",
+          boxShadow: selected ? `0 0 12px ${accent}66` : "none",
         }}
       >
         <img
@@ -339,10 +337,16 @@ function RuneIcon({
           onError={e => { (e.target as HTMLImageElement).style.opacity = "0"; }}
         />
       </div>
+      {selected && (
+        <span className="text-[8px] font-['Cinzel'] text-center leading-tight max-w-[56px] truncate"
+          style={{ color: accent }}>
+          {name}
+        </span>
+      )}
       {!dimmed && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#0d0e14] border
-          border-[#2e3048] px-2 py-1 text-[10px] text-white whitespace-nowrap
-          opacity-0 group-hover:opacity-100 pointer-events-none z-50 rounded">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#010A13] border
+          border-[#1E2D3D] px-2 py-1 text-[10px] text-[#C8AA6E] whitespace-nowrap
+          opacity-0 group-hover:opacity-100 pointer-events-none z-50">
           {name}
         </div>
       )}
@@ -350,116 +354,224 @@ function RuneIcon({
   );
 }
 
-// ── Full rune tree (OP.GG layout) ─────────────────────────────
+// ── Stat shard data ────────────────────────────────────────────
+const SHARD_ROWS: { label: string; icon: string }[][] = [
+  [
+    { label: "Adaptive Force", icon: "perk-images/StatMods/StatModsAdaptiveForceIcon.png" },
+    { label: "Attack Speed",   icon: "perk-images/StatMods/StatModsAttackSpeedIcon.png" },
+    { label: "Ability Haste",  icon: "perk-images/StatMods/StatModsCDRScalingIcon.png" },
+  ],
+  [
+    { label: "Adaptive Force", icon: "perk-images/StatMods/StatModsAdaptiveForceIcon.png" },
+    { label: "Armor",          icon: "perk-images/StatMods/StatModsArmorIcon.png" },
+    { label: "Magic Resist",   icon: "perk-images/StatMods/StatModsMagicResIcon.MagicResist_fix.png" },
+  ],
+  [
+    { label: "Health",         icon: "perk-images/StatMods/StatModsHealthScalingIcon.png" },
+    { label: "Tenacity",       icon: "perk-images/StatMods/StatModsTenacityIcon.png" },
+    { label: "Ability Haste",  icon: "perk-images/StatMods/StatModsCDRScalingIcon.png" },
+  ],
+];
+
+function ShardCell({ label, icon, selected }: { label: string; icon: string; selected: boolean }) {
+  const color = "#C89B3C";
+  return (
+    <div className="group relative flex flex-col items-center gap-1">
+      <div
+        className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center"
+        style={{
+          border: selected ? `2px solid ${color}` : "1px solid #1E2D3D",
+          background: selected ? color + "22" : "rgba(1,10,19,0.4)",
+          filter: selected ? "none" : "grayscale(1) opacity(0.3)",
+          boxShadow: selected ? `0 0 8px ${color}55` : "none",
+        }}
+      >
+        <img
+          src={`https://ddragon.leagueoflegends.com/cdn/img/${icon}`}
+          alt={label}
+          className="w-full h-full object-contain p-0.5"
+          onError={e => { (e.target as HTMLImageElement).style.opacity = "0"; }}
+        />
+      </div>
+      <span className="text-[7px] text-[#5B7A8C] text-center leading-tight max-w-[36px]">{label}</span>
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#010A13] border
+        border-[#1E2D3D] px-2 py-1 text-[10px] text-[#C8AA6E] whitespace-nowrap
+        opacity-0 group-hover:opacity-100 pointer-events-none z-50">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+// ── Full rune tree — OP.GG grid layout ────────────────────────
 function RuneTree({ runes, winRate: buildWR, games }: {
   runes: BuildEntry["runes"]; winRate: number; games: number;
 }) {
   const { paths, loaded } = useRuneData();
-  if (!loaded) return <div className="text-[#5e5f7a] text-xs p-4 animate-pulse">Loading runes…</div>;
+  if (!loaded) return (
+    <div className="flex items-center justify-center h-32 text-[#5B7A8C] font-['Cinzel'] text-xs animate-pulse">
+      Loading runes…
+    </div>
+  );
 
   const primaryPath   = paths.find(p => p.name === runes.primary);
   const secondaryPath = paths.find(p => p.name === runes.secondary);
-  const pColor = PATH_COLORS[runes.primary]   ?? "#5383e8";
-  const sColor = PATH_COLORS[runes.secondary] ?? "#5383e8";
+  const pColor = PATH_COLORS[runes.primary]   ?? "#C89B3C";
+  const sColor = PATH_COLORS[runes.secondary] ?? "#0AC8B9";
   const primarySelSet   = new Set((runes.primaryRunes   ?? []).map(n => n.toLowerCase()));
   const secondarySelSet = new Set((runes.secondaryRunes ?? []).map(n => n.toLowerCase()));
 
+  const SLOT_H = "py-5 border-b border-[#1E2D3D] last:border-0";
+
   return (
-    <div className="flex gap-3">
-      {/* Primary path */}
-      <div className="flex-1 bg-[#13141a] rounded-xl border border-[#2e3048] p-4">
-        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#2e3048]">
+    <div className="border border-[#1E2D3D] overflow-hidden" style={{ background: "#060E1A" }}>
+
+      {/* ── Column headers ────────────────────────────────────── */}
+      <div className="grid border-b border-[#1E2D3D]" style={{ gridTemplateColumns: "1fr 220px 148px" }}>
+
+        {/* Primary header */}
+        <div className="flex items-center gap-3 px-5 py-3 border-r border-[#1E2D3D]"
+          style={{ background: pColor + "0d" }}>
           {primaryPath && (
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2" style={{ borderColor: pColor }}>
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 shrink-0"
+              style={{ borderColor: pColor }}>
               <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryPath.icon}`}
                 alt={primaryPath.name} className="w-full h-full object-contain" />
             </div>
           )}
-          <span className="font-bold text-sm" style={{ color: pColor }}>{runes.primary}</span>
+          <div>
+            <div className="font-['Cinzel'] text-sm font-bold tracking-wider" style={{ color: pColor }}>
+              {runes.primary}
+            </div>
+            <div className="text-[10px] text-[#5B7A8C] font-mono">Primary Path</div>
+          </div>
           <div className="ml-auto text-right">
-            <div className="font-bold text-sm" style={{ color: wrColor(buildWR) }}>{buildWR}%</div>
-            <div className="text-[10px] text-[#5e5f7a]">{games.toLocaleString()} games</div>
+            <div className="font-mono font-bold text-sm" style={{ color: winRateColor(buildWR) }}>{buildWR}%</div>
+            <div className="text-[10px] text-[#5B7A8C] font-mono">{games.toLocaleString()} games</div>
           </div>
         </div>
 
-        {/* Keystones */}
-        {primaryPath?.slots[0] && (
-          <div className="flex justify-center gap-7 mb-5">
-            {primaryPath.slots[0].runes.map(perk => {
-              const sel = perk.name.toLowerCase() === runes.keystone.toLowerCase();
-              return (
-                <div key={perk.id} className="flex flex-col items-center gap-1.5">
-                  <RuneIcon iconPath={perk.icon} name={perk.name}
-                    size={sel ? 58 : 40} selected={sel} dimmed={!sel} pathColor={pColor} />
-                  {sel && (
-                    <span className="text-[10px] font-semibold text-center leading-tight max-w-[72px]"
-                      style={{ color: pColor }}>{perk.name}</span>
-                  )}
-                </div>
-              );
-            })}
+        {/* Secondary header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-r border-[#1E2D3D]"
+          style={{ background: sColor + "0d" }}>
+          {secondaryPath && (
+            <div className="w-7 h-7 rounded-full overflow-hidden border-2 shrink-0"
+              style={{ borderColor: sColor }}>
+              <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryPath.icon}`}
+                alt={secondaryPath.name} className="w-full h-full object-contain" />
+            </div>
+          )}
+          <div>
+            <div className="font-['Cinzel'] text-xs font-bold tracking-wider" style={{ color: sColor }}>
+              {runes.secondary}
+            </div>
+            <div className="text-[10px] text-[#5B7A8C] font-mono">Secondary</div>
           </div>
-        )}
+        </div>
 
-        {/* Slots 1–3 */}
-        {primaryPath?.slots.slice(1).map((slot, si) => (
-          <div key={si} className="flex justify-around mb-4">
-            {slot.runes.map((perk, pi) => {
-              const sel = primarySelSet.size > 0
-                ? primarySelSet.has(perk.name.toLowerCase())
-                : pi === 0;
-              return (
-                <div key={perk.id} className="flex flex-col items-center gap-1">
-                  <RuneIcon iconPath={perk.icon} name={perk.name}
-                    size={sel ? 36 : 28} selected={sel} dimmed={!sel} pathColor={pColor} />
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {/* Shards header */}
+        <div className="flex items-center px-4 py-3" style={{ background: "#C89B3C0d" }}>
+          <span className="font-['Cinzel'] text-xs font-bold text-[#785A28] tracking-widest uppercase">Shards</span>
+        </div>
       </div>
 
-      {/* Secondary + Shards column */}
-      <div className="w-44 space-y-3">
-        <div className="bg-[#13141a] rounded-xl border border-[#2e3048] p-3">
-          <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-[#2e3048]">
-            {secondaryPath && (
-              <div className="w-6 h-6 rounded-full overflow-hidden border" style={{ borderColor: sColor }}>
-                <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryPath.icon}`}
-                  alt={secondaryPath.name} className="w-full h-full object-contain" />
-              </div>
-            )}
-            <span className="text-xs font-bold" style={{ color: sColor }}>{runes.secondary}</span>
+      {/* ── Rune rows ─────────────────────────────────────────── */}
+      <div>
+
+        {/* Keystone row */}
+        <div className={`grid border-b border-[#1E2D3D]`}
+          style={{ gridTemplateColumns: "1fr 220px 148px" }}>
+
+          {/* Primary keystones */}
+          <div className={`flex justify-around items-start px-5 ${SLOT_H} border-r border-[#1E2D3D]`}>
+            {(primaryPath?.slots[0]?.runes ?? []).map(perk => {
+              const sel = perk.name.toLowerCase() === runes.keystone.toLowerCase();
+              return (
+                <RuneIcon
+                  key={perk.id}
+                  iconPath={perk.icon}
+                  name={perk.name}
+                  size={sel ? 58 : 42}
+                  selected={sel}
+                  dimmed={!sel}
+                  pathColor={pColor}
+                />
+              );
+            })}
           </div>
-          {secondaryPath?.slots.slice(1).map((slot, si) => (
-            <div key={si} className="flex justify-around mb-3 last:mb-0">
-              {slot.runes.map((perk, pi) => {
+
+          {/* Secondary: slot 1 */}
+          {secondaryPath?.slots[1] ? (
+            <div className={`flex justify-around items-start px-4 ${SLOT_H} border-r border-[#1E2D3D]`}>
+              {secondaryPath.slots[1].runes.map(perk => {
                 const sel = secondarySelSet.size > 0
                   ? secondarySelSet.has(perk.name.toLowerCase())
-                  : si < 2 && pi === 0;
+                  : false;
                 return (
                   <RuneIcon key={perk.id} iconPath={perk.icon} name={perk.name}
-                    size={sel ? 30 : 24} selected={sel} dimmed={!sel} pathColor={sColor} />
+                    size={sel ? 40 : 32} selected={sel} dimmed={!sel} pathColor={sColor} />
                 );
               })}
             </div>
-          ))}
+          ) : <div className="border-r border-[#1E2D3D]" />}
+
+          {/* Shard row 1 */}
+          <div className={`flex justify-around items-start px-3 ${SLOT_H}`}>
+            {SHARD_ROWS[0].map((s, i) => (
+              <ShardCell key={i} label={s.label} icon={s.icon} selected={i === 0} />
+            ))}
+          </div>
         </div>
 
-        {/* Stat shards */}
-        <div className="bg-[#13141a] rounded-xl border border-[#2e3048] p-3">
-          <div className="text-[9px] text-[#5e5f7a] uppercase tracking-wider mb-2">Stat Shards</div>
-          {[["Adaptive Force", "Attack Speed"], ["Adaptive Force", "Armor"], ["Armor", "Magic Resist"]].map(([a], i) => (
-            <div key={i} className="flex items-center gap-1.5 mb-2 last:mb-0">
-              <div className="w-4 h-4 rounded-full border-2 border-[#5383e8] bg-[#5383e8]/20
-                flex items-center justify-center shrink-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#5383e8]" />
+        {/* Rows 1–3 of primary, rows 2–4 of secondary, shard rows 2–3 */}
+        {[0, 1, 2].map(rowIdx => {
+          const primarySlot   = primaryPath?.slots[rowIdx + 1];
+          const secondarySlot = secondaryPath?.slots[rowIdx + 2];
+
+          return (
+            <div key={rowIdx}
+              className={`grid ${rowIdx < 2 ? "border-b border-[#1E2D3D]" : ""}`}
+              style={{ gridTemplateColumns: "1fr 220px 148px" }}>
+
+              {/* Primary non-keystone slot */}
+              <div className={`flex justify-around items-start px-5 ${SLOT_H} border-r border-[#1E2D3D]`}>
+                {(primarySlot?.runes ?? []).map((perk, pi) => {
+                  const sel = primarySelSet.size > 0
+                    ? primarySelSet.has(perk.name.toLowerCase())
+                    : pi === 0;
+                  return (
+                    <RuneIcon key={perk.id} iconPath={perk.icon} name={perk.name}
+                      size={sel ? 44 : 32} selected={sel} dimmed={!sel} pathColor={pColor} />
+                  );
+                })}
               </div>
-              <div className="w-4 h-4 rounded-full border border-[#2e3048] opacity-25 shrink-0" />
-              <span className="text-[9px] text-[#5e5f7a]">{a}</span>
+
+              {/* Secondary slot */}
+              {secondarySlot ? (
+                <div className={`flex justify-around items-start px-4 ${SLOT_H} border-r border-[#1E2D3D]`}>
+                  {secondarySlot.runes.map((perk, pi) => {
+                    const sel = secondarySelSet.size > 0
+                      ? secondarySelSet.has(perk.name.toLowerCase())
+                      : rowIdx < 2 && pi === 0;
+                    return (
+                      <RuneIcon key={perk.id} iconPath={perk.icon} name={perk.name}
+                        size={sel ? 40 : 30} selected={sel} dimmed={!sel} pathColor={sColor} />
+                    );
+                  })}
+                </div>
+              ) : <div className="border-r border-[#1E2D3D]" />}
+
+              {/* Shard rows 2 and 3 for rowIdx 0 and 1; empty for rowIdx 2 */}
+              <div className={`flex justify-around items-start px-3 ${SLOT_H}`}>
+                {rowIdx < 2
+                  ? SHARD_ROWS[rowIdx + 1].map((s, i) => (
+                      <ShardCell key={i} label={s.label} icon={s.icon} selected={i === 0} />
+                    ))
+                  : null}
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -467,7 +579,7 @@ function RuneTree({ runes, winRate: buildWR, games }: {
 
 // ── Skill order grid ───────────────────────────────────────────
 const AB_COLORS: Record<string, string> = {
-  Q: "#5383e8", W: "#e8b058", E: "#22c55e", R: "#e84057",
+  Q: "#C89B3C", W: "#0AC8B9", E: "#A0B4C8", R: "#FF4E50",
 };
 
 function SkillGrid({ order, skillOrder, champId, version }: {
@@ -482,25 +594,25 @@ function SkillGrid({ order, skillOrder, champId, version }: {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-3 flex-wrap">
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
         {["Q", "W", "E", "R"].map(ab => {
           const sp = byAb[ab];
           const c  = AB_COLORS[ab];
           return (
             <div key={ab} className="flex items-center gap-1.5">
-              <div className="w-8 h-8 rounded-md overflow-hidden border flex items-center justify-center"
+              <div className="w-8 h-8 overflow-hidden border flex items-center justify-center"
                 style={{ borderColor: c + "60", background: c + "15" }}>
                 {sp
                   ? <img src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${sp.id}.png`}
                       alt={sp.name} className="w-full h-full object-cover" />
                   : <span className="text-[11px] font-black" style={{ color: c }}>{ab}</span>}
               </div>
-              <span className="text-xs font-bold" style={{ color: c }}>{ab}</span>
+              <span className="text-xs font-['Cinzel'] font-bold" style={{ color: c }}>{ab}</span>
             </div>
           );
         })}
-        <div className="ml-auto text-[11px] text-[#5e5f7a]">
-          Max: <span className="text-white font-semibold">{skillOrder}</span>
+        <div className="ml-auto text-[11px] text-[#5B7A8C] font-['Cinzel']">
+          Max: <span className="text-[#C8AA6E] font-semibold">{skillOrder}</span>
         </div>
       </div>
 
@@ -510,16 +622,16 @@ function SkillGrid({ order, skillOrder, champId, version }: {
           return (
             <div key={i} className="flex flex-col items-center gap-0.5">
               <div
-                className="w-7 h-7 flex items-center justify-center text-[11px] font-bold rounded-sm"
+                className="w-7 h-7 flex items-center justify-center text-[11px] font-bold font-['Cinzel']"
                 style={{
-                  color: c ?? "#5e5f7a",
-                  background: c ? c + "18" : "#1a1b22",
-                  border: `1px solid ${c ? c + "50" : "#2e3048"}`,
+                  color: c ?? "#5B7A8C",
+                  background: c ? c + "18" : "#0A1428",
+                  border: `1px solid ${c ? c + "50" : "#1E2D3D"}`,
                 }}
               >
                 {ability || "?"}
               </div>
-              <div className="text-[7px] text-[#5e5f7a]">{i + 1}</div>
+              <div className="text-[7px] text-[#5B7A8C] font-mono">{i + 1}</div>
             </div>
           );
         })}
@@ -552,22 +664,22 @@ function RankSelect({ value, onChange }: { value: string; onChange: (l: string, 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1e1f28] border border-[#2e3048]
-          hover:border-[#5383e8] text-[11px] text-white rounded-lg transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A1428] border border-[#1E2D3D]
+          hover:border-[#785A28] text-[11px] text-[#A0B4C8] font-['Cinzel'] tracking-wider transition-colors"
       >
         <span>{cur.icon}</span><span>{value}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-[#5e5f7a] transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-[#5B7A8C] transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 bg-[#1e1f28] border border-[#2e3048]
-          shadow-2xl rounded-lg min-w-[165px] overflow-hidden">
+        <div className="absolute top-full left-0 z-50 mt-0.5 bg-[#0A1428] border border-[#785A28]
+          shadow-2xl min-w-[165px] overflow-hidden">
           {RANKS.map(r => (
             <button
               key={r.label}
               onClick={() => { onChange(r.label, r.key); setOpen(false); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] hover:bg-[#2a2b3a]
-                border-b border-[#2e3048] last:border-0 text-left transition-colors
-                ${value === r.label ? "text-[#5383e8]" : "text-[#9d9db8]"}`}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-['Cinzel'] tracking-wider
+                hover:bg-[#785A28]/20 border-b border-[#1E2D3D] last:border-0 text-left transition-colors
+                ${value === r.label ? "text-[#C89B3C]" : "text-[#5B7A8C]"}`}
             >
               <span>{r.icon}</span><span>{r.label}</span>
             </button>
@@ -584,16 +696,16 @@ function ItemRow({ rank, item, pickRate, winRate: rowWR, games, version }: {
   pickRate: number; winRate: number; games: number; version: string;
 }) {
   return (
-    <div className="flex items-center gap-2 py-2 border-b border-[#2e3048] last:border-0">
-      <span className="text-[10px] text-[#5e5f7a] w-4 shrink-0 text-center">{rank}</span>
-      <ItemImg id={item.id} name={item.name} version={version} size={32} />
+    <div className="flex items-center gap-2 py-2 border-b border-[#1E2D3D] last:border-0">
+      <span className="text-[10px] text-[#5B7A8C] font-mono w-4 shrink-0 text-center">{rank}</span>
+      <ItemImg id={item.id} name={item.name} version={version} size={30} />
       <div className="flex-1 min-w-0">
-        <div className="text-[11px] text-white truncate">{item.name}</div>
-        <div className="text-[9px] text-[#5e5f7a]">{games.toLocaleString()} games</div>
+        <div className="text-[11px] text-[#C8AA6E] truncate">{item.name}</div>
+        <div className="text-[9px] text-[#5B7A8C] font-mono">{games.toLocaleString()} games</div>
       </div>
       <div className="text-right shrink-0">
-        <div className="font-bold text-[11px]" style={{ color: wrColor(rowWR) }}>{rowWR.toFixed(1)}%</div>
-        <div className="text-[10px] text-[#5383e8]">{pickRate.toFixed(1)}%</div>
+        <div className="font-bold font-mono text-[11px]" style={{ color: winRateColor(rowWR) }}>{rowWR.toFixed(1)}%</div>
+        <div className="text-[10px] text-[#0AC8B9] font-mono">{pickRate.toFixed(1)}%</div>
       </div>
     </div>
   );
@@ -603,22 +715,22 @@ function ItemRow({ rank, item, pickRate, winRate: rowWR, games, version }: {
 function CounterCard({ champ, winRate: cardWR, games, variant }: {
   champ: ChampionInfo; winRate: number; games: number; variant: "hard" | "easy";
 }) {
-  const color = variant === "hard" ? "#e84057" : "#22c55e";
+  const color = variant === "hard" ? "#FF4E50" : "#0AC8B9";
   return (
     <div className="flex flex-col items-center gap-1 min-w-[52px]">
-      <div className="w-12 h-12 rounded-full overflow-hidden border-2" style={{ borderColor: color + "80" }}>
+      <div className="w-12 h-12 overflow-hidden border-2" style={{ borderColor: color + "80" }}>
         <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" loading="lazy" />
       </div>
-      <div className="text-[9px] text-[#9d9db8] text-center max-w-[56px] truncate">{champ.name}</div>
-      <div className="font-bold text-[11px]" style={{ color }}>{cardWR.toFixed(1)}%</div>
-      <div className="text-[8px] text-[#5e5f7a]">{(games / 1000).toFixed(1)}k</div>
+      <div className="text-[9px] text-[#A0B4C8] font-['Cinzel'] text-center max-w-[56px] truncate">{champ.name}</div>
+      <div className="font-bold font-mono text-[11px]" style={{ color }}>{cardWR.toFixed(1)}%</div>
+      <div className="text-[8px] text-[#5B7A8C] font-mono">{(games / 1000).toFixed(1)}k</div>
     </div>
   );
 }
 
 // ── Tier badge colors ──────────────────────────────────────────
 const TIER_COLORS: Record<string, string> = {
-  "S+": "#e84057", S: "#ff8200", "A+": "#5383e8", A: "#9d9db8", B: "#5e5f7a",
+  "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C",
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -669,35 +781,44 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
   const isJungler = champion.primaryRole === "Jungle";
   const patch     = version.split(".").slice(0, 2).join(".");
   const roleUrl   = ROLE_ICONS[champion.primaryRole];
-  const tierColor = TIER_COLORS[champion.tier] ?? "#9d9db8";
+  const tierColor = TIER_COLORS[champion.tier] ?? "#A0B4C8";
 
   if (!build) {
-    return <div className="flex items-center justify-center h-64 text-[#5e5f7a]">No build data</div>;
+    return <div className="flex items-center justify-center h-64 text-[#5B7A8C] font-['Cinzel']">No build data</div>;
   }
 
-  // ── shared card class ─────────────────────────────────────────
-  const card = "bg-[#1e1f28] border border-[#2e3048] rounded-2xl";
+  // ── shared card style ──────────────────────────────────────
+  const card = "bg-[#0A1428] border border-[#1E2D3D]";
+  const sectionLabel = "font-['Cinzel'] text-[10px] tracking-widest text-[#785A28] uppercase mb-3";
 
   return (
-    <div className="min-h-screen" style={{ background: "#13141a" }}>
+    <div className="min-h-screen" style={{ background: "#010A13" }}>
+      {/* Gold top line */}
+      <div className="h-px w-full"
+        style={{ background: "linear-gradient(90deg,transparent,#785A28 30%,#C89B3C 50%,#785A28 70%,transparent)" }} />
+
       <div className="max-w-[1120px] mx-auto px-4 py-5">
 
         {/* Breadcrumb */}
         <button onClick={onBack}
-          className="flex items-center gap-1.5 text-[#5e5f7a] hover:text-white text-xs mb-5 transition-colors">
+          className="flex items-center gap-1.5 text-[#5B7A8C] hover:text-[#C89B3C] text-xs mb-5 transition-colors font-['Cinzel'] tracking-wider">
           <ChevronLeft className="w-3.5 h-3.5" />
-          Champions <span className="text-[#2e3048] mx-0.5">/</span>
-          <span className="text-[#9d9db8]">{champion.name}</span>
+          Champions <span className="text-[#1E2D3D] mx-0.5">/</span>
+          <span className="text-[#A0B4C8]">{champion.name}</span>
         </button>
 
         {/* ── Champion Header ──────────────────────────────── */}
-        <div className={`${card} p-5 mb-4 flex items-center gap-5 flex-wrap`}>
+        <div className={`${card} p-5 mb-4 flex items-center gap-5 flex-wrap relative overflow-hidden`}>
+          {/* Corner accents */}
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#785A28]" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#785A28]" />
+
           <div className="relative shrink-0">
-            <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-[#3a3b4c]">
+            <div className="w-24 h-24 overflow-hidden border-2 border-[#785A28]">
               <img src={champion.imageUrl} alt={champion.name} className="w-full h-full object-cover" />
             </div>
             <div
-              className="absolute -bottom-2 -right-2 w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black border"
+              className="absolute -bottom-2 -right-2 w-7 h-7 flex items-center justify-center text-[10px] font-black font-['Cinzel'] border"
               style={{ color: tierColor, background: tierColor + "18", borderColor: tierColor + "60" }}
             >
               {champion.tier}
@@ -706,28 +827,29 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h1 className="text-3xl font-black text-white tracking-tight">{champion.name}</h1>
+              <h1 className="text-3xl font-black text-[#C8AA6E] font-['Cinzel'] tracking-widest gold-text">{champion.name}</h1>
               {roleUrl && (
                 <img src={roleUrl} alt={champion.primaryRole} width={22} height={22}
-                  className="object-contain" style={{ filter: "brightness(0) invert(0.5)" }} />
+                  className="object-contain"
+                  style={{ filter: "brightness(0) saturate(100%) invert(75%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(1.1)" }} />
               )}
-              <span className="text-xs text-[#5e5f7a] font-medium">{champion.primaryRole}</span>
+              <span className="text-xs text-[#5B7A8C] font-['Cinzel'] tracking-widest">{champion.primaryRole}</span>
             </div>
-            <div className="text-sm text-[#5e5f7a] italic mb-3">{champion.title}</div>
+            <div className="text-sm text-[#5B7A8C] italic mb-3">{champion.title}</div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] bg-[#2e3048] text-[#9d9db8] px-2 py-0.5 rounded-full">
-                Patch {patch}
+              <span className="text-[10px] font-mono border border-[#1E2D3D] text-[#785A28] px-2 py-0.5">
+                PATCH {patch}
               </span>
               {opggLoading && (
-                <span className="flex items-center gap-1.5 text-[11px] text-[#5e5f7a]">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#5383e8] animate-pulse" />
+                <span className="flex items-center gap-1.5 text-[10px] text-[#5B7A8C] font-['Cinzel']">
+                  <div className="w-1.5 h-1.5 bg-[#C89B3C] animate-pulse" />
                   Fetching live data…
                 </span>
               )}
               {isLive && (
-                <span className="flex items-center gap-1.5 text-[11px] text-[#22c55e]
-                  bg-[#22c55e]/10 border border-[#22c55e]/30 px-2 py-0.5 rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+                <span className="flex items-center gap-1.5 text-[10px] text-[#0AC8B9] font-['Cinzel'] tracking-wider
+                  border border-[#0AC8B9]/30 px-2 py-0.5">
+                  <div className="w-1.5 h-1.5 bg-[#0AC8B9]" />
                   OP.GG LIVE
                 </span>
               )}
@@ -737,26 +859,28 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
           {/* Stats */}
           <div className="flex gap-8 text-center shrink-0 flex-wrap">
             {([
-              { label: "Win Rate",  val: `${champion.winRate.toFixed(2)}%`,  color: wrColor(champion.winRate) },
-              { label: "Pick Rate", val: `${champion.pickRate.toFixed(2)}%`, color: "#9d9db8" },
-              { label: "Ban Rate",  val: `${champion.banRate.toFixed(2)}%`,  color: "#9d9db8" },
-              { label: "Games",     val: (champion.games / 1000).toFixed(1) + "k", color: "#9d9db8" },
+              { label: "Win Rate",  val: `${champion.winRate.toFixed(2)}%`,  color: winRateColor(champion.winRate) },
+              { label: "Pick Rate", val: `${champion.pickRate.toFixed(2)}%`, color: "#A0B4C8" },
+              { label: "Ban Rate",  val: `${champion.banRate.toFixed(2)}%`,  color: "#A0B4C8" },
+              { label: "Games",     val: (champion.games / 1000).toFixed(1) + "k", color: "#A0B4C8" },
             ] as const).map(({ label, val, color }) => (
               <div key={label} className="flex flex-col gap-0.5">
-                <div className="text-[10px] text-[#5e5f7a] uppercase tracking-wider">{label}</div>
-                <div className="font-bold text-base" style={{ color }}>{val}</div>
+                <div className="text-[9px] text-[#785A28] uppercase tracking-widest font-['Cinzel']">{label}</div>
+                <div className="font-bold font-mono text-base" style={{ color }}>{val}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── Filter bar ───────────────────────────────────── */}
-        <div className="flex items-center gap-3 mb-4 flex-wrap">
-          <div className="flex bg-[#1e1f28] border border-[#2e3048] rounded-lg overflow-hidden">
+        <div className="flex items-center gap-3 mb-0 flex-wrap">
+          <div className="flex border border-[#1E2D3D] overflow-hidden">
             {QUEUE_TABS.map(q => (
               <button key={q} onClick={() => setQueue(q)}
-                className={`px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                  queue === q ? "bg-[#5383e8] text-white" : "text-[#5e5f7a] hover:text-white hover:bg-[#2a2b3a]"
+                className={`px-3 py-1.5 text-[10px] font-['Cinzel'] tracking-wider transition-colors border-r border-[#1E2D3D] last:border-0 ${
+                  queue === q
+                    ? "bg-[#785A28]/30 text-[#C89B3C]"
+                    : "bg-[#0A1428] text-[#5B7A8C] hover:text-[#A0B4C8] hover:bg-[#0A1428]/80"
                 }`}>
                 {q}
               </button>
@@ -766,15 +890,15 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         </div>
 
         {/* ── Section tabs ──────────────────────────────────── */}
-        <div className="flex border-b border-[#2e3048] mb-5">
+        <div className="flex border-b border-[#1E2D3D] mb-5 mt-4">
           {SECTION_TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition-all ${
+              className={`px-5 py-2.5 text-[11px] font-['Cinzel'] tracking-widest border-b-2 transition-all ${
                 tab === t
-                  ? "border-[#5383e8] text-white"
-                  : "border-transparent text-[#5e5f7a] hover:text-[#9d9db8]"
+                  ? "border-[#C89B3C] text-[#C89B3C]"
+                  : "border-transparent text-[#5B7A8C] hover:text-[#A0B4C8]"
               }`}>
-              {t}
+              {t.toUpperCase()}
             </button>
           ))}
         </div>
@@ -785,35 +909,35 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {tab === "Build" && (
           <div className="space-y-4">
 
-            {/* Row 1: Runes (left) + Spells & Skills (right) */}
+            {/* Row 1: Runes + Spells & Skills */}
             <div className="flex gap-4">
               <div className={`${card} flex-1 min-w-0 p-5`}>
-                <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-4">Runes</div>
+                <div className={sectionLabel}>Runes</div>
                 <RuneTree runes={build.runes} winRate={build.winRate} games={build.games} />
               </div>
 
               <div className="w-72 shrink-0 space-y-4">
                 {/* Summoner spells */}
                 <div className={`${card} p-4`}>
-                  <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-3">Summoner Spells</div>
+                  <div className={sectionLabel}>Summoner Spells</div>
                   <div className="flex items-center gap-3">
                     <div className="flex gap-2">
                       {build.spells.map((spell, i) => <SpellImg key={i} name={spell} version={version} size={50} />)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-white truncate">{build.spells.join(" + ")}</div>
-                      <div className="text-[10px] text-[#5383e8] mt-0.5">{build.pickRate}% pick rate</div>
+                      <div className="text-sm font-['Cinzel'] text-[#C8AA6E] truncate">{build.spells.join(" + ")}</div>
+                      <div className="text-[10px] text-[#0AC8B9] font-mono mt-0.5">{build.pickRate}% pick rate</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-bold text-sm" style={{ color: wrColor(build.winRate) }}>{build.winRate}%</div>
-                      <div className="text-[9px] text-[#5e5f7a]">{build.games.toLocaleString()}g</div>
+                      <div className="font-bold font-mono text-sm" style={{ color: winRateColor(build.winRate) }}>{build.winRate}%</div>
+                      <div className="text-[9px] text-[#5B7A8C] font-mono">{build.games.toLocaleString()}g</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Skill order */}
                 <div className={`${card} p-4`}>
-                  <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-3">Skill Order</div>
+                  <div className={sectionLabel}>Skill Order</div>
                   <SkillGrid order={build.levelOrder} skillOrder={build.skillOrder} champId={champion.id} version={version} />
                 </div>
               </div>
@@ -821,44 +945,44 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
 
             {/* Row 2: Items */}
             <div className={`${card} p-5`}>
-              <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-4">Item Build</div>
+              <div className={sectionLabel}>Item Build</div>
 
               {/* Starter */}
-              <div className="mb-4 pb-4 border-b border-[#2e3048]">
-                <div className="text-[10px] text-[#5e5f7a] uppercase tracking-wider font-semibold mb-2">Starter Items</div>
-                <div className="flex items-center gap-3 bg-[#13141a] rounded-xl px-4 py-3">
+              <div className="mb-4 pb-4 border-b border-[#1E2D3D]">
+                <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Starter Items</div>
+                <div className="flex items-center gap-3 bg-[#060E1A] border border-[#1E2D3D] px-4 py-3">
                   <div className="flex items-center gap-2">
                     {build.startItems.map((item, i) => (
                       <span key={i} className="flex items-center gap-2">
                         <ItemImg id={item.id} name={item.name} version={version} size={42} />
-                        {i < build.startItems.length - 1 && <span className="text-[#5e5f7a] text-lg font-light">+</span>}
+                        {i < build.startItems.length - 1 && <span className="text-[#5B7A8C] text-lg font-light">+</span>}
                       </span>
                     ))}
                   </div>
                   <div className="flex-1" />
                   <div className="text-right shrink-0">
-                    <div className="font-bold text-sm" style={{ color: wrColor(build.winRate) }}>{build.winRate}%</div>
-                    <div className="text-[10px] text-[#5383e8]">{build.pickRate}% pick</div>
+                    <div className="font-bold font-mono text-sm" style={{ color: winRateColor(build.winRate) }}>{build.winRate}%</div>
+                    <div className="text-[10px] text-[#0AC8B9] font-mono">{build.pickRate}% pick</div>
                   </div>
                 </div>
               </div>
 
               {/* Core build path */}
-              <div className="mb-4 pb-4 border-b border-[#2e3048]">
-                <div className="text-[10px] text-[#5e5f7a] uppercase tracking-wider font-semibold mb-2">Core Build</div>
-                <div className="flex items-center gap-2 bg-[#13141a] rounded-xl px-4 py-3 flex-wrap">
+              <div className="mb-4 pb-4 border-b border-[#1E2D3D]">
+                <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Core Build</div>
+                <div className="flex items-center gap-2 bg-[#060E1A] border border-[#1E2D3D] px-4 py-3 flex-wrap">
                   <ItemImg id={build.boots.id} name={build.boots.name} version={version} size={46} />
-                  <ChevronRight className="w-4 h-4 text-[#2e3048] shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[#1E2D3D] shrink-0" />
                   {build.items.map((item, i) => (
                     <span key={i} className="flex items-center gap-2">
                       <ItemImg id={item.id} name={item.name} version={version} size={46} />
-                      {i < build.items.length - 1 && <ChevronRight className="w-4 h-4 text-[#2e3048] shrink-0" />}
+                      {i < build.items.length - 1 && <ChevronRight className="w-4 h-4 text-[#1E2D3D] shrink-0" />}
                     </span>
                   ))}
                   <div className="flex-1" />
                   <div className="text-right shrink-0 ml-2">
-                    <div className="font-bold text-base" style={{ color: wrColor(build.winRate) }}>{build.winRate}%</div>
-                    <div className="text-[10px] text-[#5e5f7a]">{build.games.toLocaleString()} games</div>
+                    <div className="font-bold font-mono text-base" style={{ color: winRateColor(build.winRate) }}>{build.winRate}%</div>
+                    <div className="text-[10px] text-[#5B7A8C] font-mono">{build.games.toLocaleString()} games</div>
                   </div>
                 </div>
               </div>
@@ -870,8 +994,8 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                   { label: "5th Item", opts: build.fifthOptions  },
                   { label: "6th Item", opts: build.sixthOptions  },
                 ].map(({ label, opts }) => (
-                  <div key={label} className="bg-[#13141a] rounded-xl p-3">
-                    <div className="text-[10px] text-[#5383e8] font-bold uppercase tracking-widest mb-2">{label}</div>
+                  <div key={label} className="bg-[#060E1A] border border-[#1E2D3D] p-3">
+                    <div className="text-[9px] text-[#785A28] font-['Cinzel'] font-bold uppercase tracking-widest mb-2">{label}</div>
                     {opts.map((opt, i) => (
                       <ItemRow key={i} rank={i + 1} item={opt.item} pickRate={opt.pickRate}
                         winRate={opt.winRate} games={opt.games} version={version} />
@@ -884,20 +1008,20 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
             {/* Jungle path (junglers only) */}
             {isJungler && (
               <div className={`${card} p-5`}>
-                <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-4">Jungle Path</div>
+                <div className={sectionLabel}>Jungle Path</div>
                 <JunglePaths games={build.games} />
               </div>
             )}
 
             {/* Counters preview */}
             <div className={`${card} p-5`}>
-              <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-4">Counters</div>
+              <div className={sectionLabel}>Counters</div>
               <div className="grid grid-cols-2 gap-8">
                 <div>
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-2 h-2 rounded-full bg-[#e84057]" />
-                    <span className="text-sm font-bold text-white">Hard to Beat</span>
-                    <span className="text-xs text-[#5e5f7a]">counters {champion.name}</span>
+                    <div className="w-2 h-2 bg-[#FF4E50]" />
+                    <span className="text-sm font-bold font-['Cinzel'] text-[#C8AA6E]">Hard to Beat</span>
+                    <span className="text-xs text-[#5B7A8C]">counters {champion.name}</span>
                   </div>
                   <div className="flex gap-4 flex-wrap">
                     {weakAgainst.map(({ champ, winRate: cwr, games }) => (
@@ -907,9 +1031,9 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-2 h-2 rounded-full bg-[#22c55e]" />
-                    <span className="text-sm font-bold text-white">Easy to Beat</span>
-                    <span className="text-xs text-[#5e5f7a]">{champion.name} dominates</span>
+                    <div className="w-2 h-2 bg-[#0AC8B9]" />
+                    <span className="text-sm font-bold font-['Cinzel'] text-[#C8AA6E]">Easy to Beat</span>
+                    <span className="text-xs text-[#5B7A8C]">{champion.name} dominates</span>
                   </div>
                   <div className="flex gap-4 flex-wrap">
                     {strongAgainst.map(({ champ, winRate: cwr, games }) => (
@@ -928,15 +1052,15 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {tab === "Counters" && (
           <div className="space-y-4">
             {([
-              { title: "Hard to Beat", sub: `These champions counter ${champion.name}`, entries: weakAgainst,   v: "hard" as const, color: "#e84057" },
-              { title: "Easy to Beat", sub: `${champion.name} dominates these matchups`, entries: strongAgainst, v: "easy" as const, color: "#22c55e" },
+              { title: "Hard to Beat", sub: `These champions counter ${champion.name}`, entries: weakAgainst,   v: "hard" as const, color: "#FF4E50" },
+              { title: "Easy to Beat", sub: `${champion.name} dominates these matchups`, entries: strongAgainst, v: "easy" as const, color: "#0AC8B9" },
             ] as const).map(({ title, sub, entries, v, color }) => (
               <div key={title} className={`${card} p-6`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                  <span className="text-base font-bold text-white">{title}</span>
+                  <div className="w-2.5 h-2.5" style={{ background: color }} />
+                  <span className="text-base font-bold font-['Cinzel'] text-[#C8AA6E]">{title}</span>
                 </div>
-                <div className="text-[11px] text-[#5e5f7a] mb-5">{sub}</div>
+                <div className="text-[11px] text-[#5B7A8C] mb-5">{sub}</div>
                 <div className="flex gap-5 flex-wrap">
                   {entries.map(({ champ, winRate: cwr, games }) => (
                     <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant={v} />
@@ -953,17 +1077,17 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {tab === "Items" && (
           <div className="space-y-4">
             <div className={`${card} p-5`}>
-              <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-4">Recommended Build</div>
+              <div className={sectionLabel}>Recommended Build</div>
               <div className="flex items-center gap-2 flex-wrap">
                 <ItemImg id={build.boots.id} name={build.boots.name} version={version} size={52} />
-                <ChevronRight className="w-4 h-4 text-[#2e3048]" />
+                <ChevronRight className="w-4 h-4 text-[#1E2D3D]" />
                 {build.items.map((item, i) => (
                   <span key={i} className="flex items-center gap-2">
                     <div className="flex flex-col items-center gap-0.5">
                       <ItemImg id={item.id} name={item.name} version={version} size={52} />
-                      <span className="text-[8px] text-[#5e5f7a]">#{i + 2}</span>
+                      <span className="text-[8px] text-[#5B7A8C] font-mono">#{i + 2}</span>
                     </div>
-                    {i < build.items.length - 1 && <ChevronRight className="w-4 h-4 text-[#2e3048]" />}
+                    {i < build.items.length - 1 && <ChevronRight className="w-4 h-4 text-[#1E2D3D]" />}
                   </span>
                 ))}
               </div>
@@ -971,29 +1095,29 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className={`${card} p-4`}>
-                <div className="text-[11px] text-[#5e5f7a] uppercase tracking-wider font-semibold mb-3">Starter Options</div>
+                <div className={sectionLabel}>Starter Options</div>
                 <div className="space-y-2">
                   {build.starterOptions.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-[#13141a] rounded-lg px-3 py-2">
+                    <div key={i} className="flex items-center gap-2 bg-[#060E1A] border border-[#1E2D3D] px-3 py-2">
                       <div className="flex items-center gap-1">
                         {opt.items.map((item, ii) => <ItemImg key={ii} id={item.id} name={item.name} version={version} size={34} />)}
                       </div>
                       <div className="flex-1" />
-                      <span className="font-bold text-xs" style={{ color: wrColor(opt.winRate) }}>{opt.winRate.toFixed(1)}%</span>
-                      <span className="text-[10px] text-[#5383e8] w-12 text-right">{opt.pickRate.toFixed(1)}%</span>
+                      <span className="font-bold font-mono text-xs" style={{ color: winRateColor(opt.winRate) }}>{opt.winRate.toFixed(1)}%</span>
+                      <span className="text-[10px] text-[#0AC8B9] font-mono w-12 text-right">{opt.pickRate.toFixed(1)}%</span>
                     </div>
                   ))}
                 </div>
               </div>
               <div className={`${card} p-4`}>
-                <div className="text-[11px] text-[#5e5f7a] uppercase tracking-wider font-semibold mb-3">Boots Options</div>
+                <div className={sectionLabel}>Boots Options</div>
                 <div className="space-y-2">
                   {build.bootsOptions.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-[#13141a] rounded-lg px-3 py-2">
+                    <div key={i} className="flex items-center gap-2 bg-[#060E1A] border border-[#1E2D3D] px-3 py-2">
                       <ItemImg id={opt.item.id} name={opt.item.name} version={version} size={34} />
-                      <span className="text-[11px] text-[#9d9db8] flex-1 truncate">{opt.item.name}</span>
-                      <span className="font-bold text-xs" style={{ color: wrColor(opt.winRate) }}>{opt.winRate.toFixed(1)}%</span>
-                      <span className="text-[10px] text-[#5383e8] w-12 text-right">{opt.pickRate.toFixed(1)}%</span>
+                      <span className="text-[11px] text-[#A0B4C8] flex-1 truncate">{opt.item.name}</span>
+                      <span className="font-bold font-mono text-xs" style={{ color: winRateColor(opt.winRate) }}>{opt.winRate.toFixed(1)}%</span>
+                      <span className="text-[10px] text-[#0AC8B9] font-mono w-12 text-right">{opt.pickRate.toFixed(1)}%</span>
                     </div>
                   ))}
                 </div>
@@ -1001,15 +1125,15 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
             </div>
 
             <div className={`${card} p-5`}>
-              <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-4">Situational Items</div>
+              <div className={sectionLabel}>Situational Items</div>
               <div className="grid grid-cols-3 gap-4">
                 {[
                   { label: "4th Item", opts: build.fourthOptions },
                   { label: "5th Item", opts: build.fifthOptions  },
                   { label: "6th Item", opts: build.sixthOptions  },
                 ].map(({ label, opts }) => (
-                  <div key={label} className="bg-[#13141a] rounded-xl p-3">
-                    <div className="text-[10px] text-[#5383e8] font-bold uppercase tracking-widest mb-2">{label}</div>
+                  <div key={label} className="bg-[#060E1A] border border-[#1E2D3D] p-3">
+                    <div className="text-[9px] text-[#785A28] font-['Cinzel'] font-bold uppercase tracking-widest mb-2">{label}</div>
                     {opts.map((opt, i) => (
                       <ItemRow key={i} rank={i + 1} item={opt.item} pickRate={opt.pickRate}
                         winRate={opt.winRate} games={opt.games} version={version} />
@@ -1026,7 +1150,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Runes" && (
           <div className={`${card} p-6`}>
-            <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-5">
+            <div className={sectionLabel}>
               Rune Page — {build.runes.primary} / {build.runes.secondary}
             </div>
             <RuneTree runes={build.runes} winRate={build.winRate} games={build.games} />
@@ -1038,7 +1162,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Skills" && (
           <div className={`${card} p-6`}>
-            <div className="text-xs font-bold text-[#5e5f7a] uppercase tracking-widest mb-5">Skill Order</div>
+            <div className={sectionLabel}>Skill Order</div>
             <SkillGrid order={build.levelOrder} skillOrder={build.skillOrder} champId={champion.id} version={version} />
           </div>
         )}
