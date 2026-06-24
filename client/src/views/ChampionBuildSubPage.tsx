@@ -757,7 +757,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
   const allBuilds   = useMemo(() => getBuild(champion.name, champion.buildType, champion.winRate, champion.pickRate, champion.games), [champion]);
   const staticBuild = useMemo(() => allBuilds.find(b => b.rank === rankKey) ?? allBuilds[0], [allBuilds, rankKey]);
 
-  const { parsed, loading: opggLoading } = useOPGGBuild(champion.name, champion.primaryRole, rankKey);
+  const { parsed } = useOPGGBuild(champion.name, champion.primaryRole, rankKey);
   const { paths } = useRuneData();
 
   const build = useMemo(() => {
@@ -777,7 +777,6 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
     };
   }, [parsed, champions, fallbackWeak, fallbackStrong]);
 
-  const isLive    = Boolean(parsed && !opggLoading);
   const isJungler = champion.primaryRole === "Jungle";
   const patch     = version.split(".").slice(0, 2).join(".");
   const roleUrl   = ROLE_ICONS[champion.primaryRole];
@@ -840,19 +839,6 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
               <span className="text-[10px] font-mono border border-[#1E2D3D] text-[#785A28] px-2 py-0.5">
                 PATCH {patch}
               </span>
-              {opggLoading && (
-                <span className="flex items-center gap-1.5 text-[10px] text-[#5B7A8C] font-['Cinzel']">
-                  <div className="w-1.5 h-1.5 bg-[#C89B3C] animate-pulse" />
-                  Fetching live data…
-                </span>
-              )}
-              {isLive && (
-                <span className="flex items-center gap-1.5 text-[10px] text-[#0AC8B9] font-['Cinzel'] tracking-wider
-                  border border-[#0AC8B9]/30 px-2 py-0.5">
-                  <div className="w-1.5 h-1.5 bg-[#0AC8B9]" />
-                  OP.GG LIVE
-                </span>
-              )}
             </div>
           </div>
 

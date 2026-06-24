@@ -11,17 +11,20 @@ const ROLE_LABEL_MAP: Record<string, string> = {
   All: "All", Top: "Top", Jungle: "Jungle", Mid: "Middle", ADC: "Bottom", Support: "Support",
 };
 
-// CDragon position icons — the actual in-game lane icons
+// CDragon position icons — in-game lane icons including fill
+const CDRA = "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons";
 const ROLE_ICON_URLS: Record<string, string> = {
-  Top:     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-top.png",
-  Jungle:  "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-jungle.png",
-  Mid:     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-middle.png",
-  ADC:     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-bottom.png",
-  Support: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/position-icons/position-utility.png",
+  All:     `${CDRA}/position-fill.png`,
+  Top:     `${CDRA}/position-top.png`,
+  Jungle:  `${CDRA}/position-jungle.png`,
+  Mid:     `${CDRA}/position-middle.png`,
+  ADC:     `${CDRA}/position-bottom.png`,
+  Support: `${CDRA}/position-utility.png`,
 };
 
 // Per-role accent colors used for badge backgrounds and active highlights
 const ROLE_COLORS: Record<string, string> = {
+  All:     "#C89B3C",
   Top:     "#C89B3C",
   Jungle:  "#0AC8B9",
   Mid:     "#9AA4DB",
@@ -36,7 +39,7 @@ const FILTER_WHITE    = "brightness(0) invert(1)";
 
 function RoleImg({ role, size = 20, active = false }: { role: string; size?: number; active?: boolean }) {
   const url = ROLE_ICON_URLS[role];
-  if (!url) return <span style={{ fontSize: size * 0.9, lineHeight: 1 }}>★</span>;
+  if (!url) return null;
   return (
     <img
       src={url}
@@ -65,13 +68,12 @@ function RoleBadge({ role, size = 20 }: { role: string; size?: number }) {
         boxShadow: `0 0 6px ${color}44`,
       }}
     >
-      {url
-        ? <img src={url} alt={role} width={imgSz} height={imgSz}
-            className="object-contain select-none"
-            style={{ filter: FILTER_WHITE }}
-            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-        : <span style={{ fontSize: imgSz * 0.8, lineHeight: 1, color }}>★</span>
-      }
+      {url && (
+        <img src={url} alt={role} width={imgSz} height={imgSz}
+          className="object-contain select-none"
+          style={{ filter: FILTER_WHITE }}
+          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+      )}
     </div>
   );
 }
@@ -191,11 +193,9 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                   : "border-transparent hover:bg-[#0A1428]"
               }`}
             >
-              {r === "All"
-                ? <span style={{ fontSize: 16, color: leftRole === "All" ? "#C89B3C" : "#3a4a5a" }}>★</span>
-                : leftRole === r
-                  ? <RoleBadge role={r} size={26} />
-                  : <RoleImg role={r} size={22} active={false} />
+              {leftRole === r
+                ? <RoleBadge role={r} size={26} />
+                : <RoleImg role={r} size={22} active={false} />
               }
             </button>
           ))}
@@ -266,11 +266,9 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                   : "border-transparent text-[#5B7A8C] hover:text-[#A0B4C8] hover:bg-[#0A1428]"
               }`}
             >
-              {r === "All"
-                ? <span style={{ fontSize: 15, color: rightRole === "All" ? "#C89B3C" : "#3a4a5a" }}>★</span>
-                : rightRole === r
-                  ? <RoleBadge role={r} size={22} />
-                  : <RoleImg role={r} size={18} active={false} />
+              {rightRole === r
+                ? <RoleBadge role={r} size={22} />
+                : <RoleImg role={r} size={18} active={false} />
               }
               <span className="hidden lg:inline">{ROLE_LABEL_MAP[r]}</span>
             </button>
