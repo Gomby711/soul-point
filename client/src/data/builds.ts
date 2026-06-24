@@ -42,7 +42,7 @@ export interface BuildEntry {
   items: ItemRef[];
   startItems: ItemRef[];
   optionalItems: ItemRef[];
-  runes: { keystone: string; primary: string; secondary: string };
+  runes: { keystone: string; primary: string; secondary: string; primaryRunes?: string[]; secondaryRunes?: string[] };
   spells: string[];
   spellIds: number[];
   skillOrder: string;

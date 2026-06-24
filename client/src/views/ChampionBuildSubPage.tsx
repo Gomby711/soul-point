@@ -47,6 +47,7 @@ interface OPGGCounter   { champion_id: number; champion_name: string; play: numb
 interface OPGGRunes {
   primary_page_name:    string; primary_rune_names:    string[];
   secondary_page_name:  string; secondary_rune_names:  string[];
+  primary_rune_ids?:   number[]; secondary_rune_ids?: number[];
 }
 interface OPGGSkills { order: string[]; play: number; win: number; pick_rate: number }
 interface OPGGData {
@@ -140,9 +141,11 @@ function mergeOPGGBuild(
 
   // Runes — names come directly from the parsed data
   const runes = d.runes ? {
-    keystone:  d.runes.primary_rune_names?.[0]   ?? staticBuild.runes.keystone,
-    primary:   d.runes.primary_page_name          ?? staticBuild.runes.primary,
-    secondary: d.runes.secondary_page_name        ?? staticBuild.runes.secondary,
+    keystone:       d.runes.primary_rune_names?.[0]   ?? staticBuild.runes.keystone,
+    primary:        d.runes.primary_page_name          ?? staticBuild.runes.primary,
+    secondary:      d.runes.secondary_page_name        ?? staticBuild.runes.secondary,
+    primaryRunes:   d.runes.primary_rune_names         ?? undefined,
+    secondaryRunes: d.runes.secondary_rune_names       ?? undefined,
   } : staticBuild.runes;
 
   // Summoner spells — ids are the numeric spell IDs
@@ -288,6 +291,10 @@ function RuneTreeFull({ runes, winRate, games }: { runes: BuildEntry["runes"]; w
   const primaryColor  = PATH_COLORS[runes.primary]   ?? "#C89B3C";
   const secondColor   = PATH_COLORS[runes.secondary] ?? "#5B7A8C";
 
+  // Build sets for fast lookup — match by lowercase name
+  const primarySelectedSet   = new Set((runes.primaryRunes   ?? []).map(n => n.toLowerCase()));
+  const secondarySelectedSet = new Set((runes.secondaryRunes ?? []).map(n => n.toLowerCase()));
+
   return (
     <div className="border border-[#1E2D3D] bg-[#050D18] rounded-sm overflow-hidden">
       <div className="flex divide-x divide-[#1E2D3D]">
@@ -325,11 +332,13 @@ function RuneTreeFull({ runes, winRate, games }: { runes: BuildEntry["runes"]; w
             </div>
           )}
 
-          {/* Slots 1–3: all options, first = selected */}
+          {/* Slots 1–3: match selected rune by name from OP.GG data */}
           {primaryPath?.slots.slice(1).map((slot, si) => (
             <div key={si} className="flex justify-around mb-4">
-              {slot.runes.map((perk, pi) => {
-                const isSel = pi === 0;
+              {slot.runes.map((perk) => {
+                const isSel = primarySelectedSet.size > 0
+                  ? primarySelectedSet.has(perk.name.toLowerCase())
+                  : slot.runes.indexOf(perk) === 0;
                 return (
                   <div key={perk.id} className="flex flex-col items-center gap-1">
                     <RuneIcon iconPath={perk.icon} name={perk.name} size={isSel ? 36 : 30} selected={isSel} dimmed={!isSel} />
@@ -354,13 +363,14 @@ function RuneTreeFull({ runes, winRate, games }: { runes: BuildEntry["runes"]; w
             <span className="text-[11px] font-['Cinzel'] font-bold" style={{ color: secondColor }}>{runes.secondary}</span>
           </div>
 
-          {/* Secondary: slots 1 & 2 active */}
+          {/* Secondary: match by name from OP.GG, any slot can be active */}
           {secondaryPath?.slots.slice(1).map((slot, si) => {
-            const isActiveSlot = si < 2;
             return (
               <div key={si} className="flex justify-around mb-3">
-                {slot.runes.map((perk, pi) => {
-                  const isSel = isActiveSlot && pi === 0;
+                {slot.runes.map((perk) => {
+                  const isSel = secondarySelectedSet.size > 0
+                    ? secondarySelectedSet.has(perk.name.toLowerCase())
+                    : si < 2 && slot.runes.indexOf(perk) === 0;
                   return (
                     <div key={perk.id} className="flex flex-col items-center gap-0.5">
                       <RuneIcon iconPath={perk.icon} name={perk.name} size={isSel ? 30 : 24} selected={isSel} dimmed={!isSel} />

@@ -88,6 +88,17 @@ export function parseOPGGClassNotation(text: string): unknown {
   return parseVal(dataStr, schemas);
 }
 
+// ── Champion name → OP.GG UPPER_SNAKE_CASE ───────────────────
+function toOpggChampion(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/['’]/g, "")     // Kai'Sa → KAISA
+    .replace(/&/g, "AND")          // Nunu & Willump → NUNU AND WILLUMP
+    .replace(/\./g, "")            // Dr. Mundo → DR MUNDO
+    .replace(/[^A-Z0-9]+/g, "_")  // spaces/symbols → _
+    .replace(/^_+|_+$/g, "");     // trim leading/trailing _
+}
+
 // ── Position & tier mappings ──────────────────────────────────
 const POSITION_MAP: Record<string, string> = {
   Top: "top", Jungle: "jungle", Mid: "mid", ADC: "adc", Support: "support",
@@ -143,7 +154,7 @@ export async function fetchChampionAnalysis(
   const opggTier = rankKey ? (TIER_MAP[rankKey] ?? undefined) : undefined;
 
   const args: Record<string, unknown> = {
-    champion:  championName,
+    champion:  toOpggChampion(championName),
     position:  opggPos,
     game_mode: "RANKED",
   };
@@ -173,7 +184,7 @@ export async function fetchChampionSynergies(
   position: string,
 ): Promise<unknown> {
   return callTool("lol_get_champion_synergies", {
-    champion:  championName,
+    champion:  toOpggChampion(championName),
     position:  POSITION_MAP[position] ?? position.toLowerCase(),
     game_mode: "RANKED",
   });
