@@ -1,0 +1,11 @@
+{
+  "name": "soul-point",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev:server & npm run dev:client",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+  }
+}
