@@ -4,13 +4,12 @@ import { Footer } from "@/components/layout/Footer";
 import { HomeView } from "@/views/HomeView";
 import { ProfileView } from "@/views/ProfileView";
 import { ChampionsView } from "@/views/ChampionsView";
-import { BuildsView } from "@/views/BuildsView";
 import { LeaderboardView } from "@/views/LeaderboardView";
 import { TierListView } from "@/views/TierListView";
 import { PatchView } from "@/views/PatchView";
 import type { Region } from "@/api/types";
 
-export type View = "home" | "profile" | "champions" | "builds" | "leaderboard" | "tierlist" | "patch";
+export type View = "home" | "profile" | "champions" | "leaderboard" | "tierlist" | "patch";
 
 interface ProfileParams {
   gameName: string;
@@ -29,12 +28,13 @@ export default function App() {
   };
 
   const handleSetView = (v: View) => {
+    if (v !== "champions") setChampionId(null);
     setView(v);
   };
 
   const handleSelectChampion = (id: string) => {
     setChampionId(id);
-    setView("builds");
+    setView("champions");
   };
 
   return (
@@ -52,8 +52,12 @@ export default function App() {
             onSearch={handleSearch}
           />
         )}
-        {view === "champions" && <ChampionsView onSelectChampion={handleSelectChampion} />}
-        {view === "builds" && <BuildsView initialChampionId={selectedChampionId} />}
+        {view === "champions" && (
+          <ChampionsView
+            initialChampionId={selectedChampionId}
+            onNavigateToChampion={handleSelectChampion}
+          />
+        )}
         {view === "leaderboard" && <LeaderboardView onSearch={handleSearch} />}
         {view === "tierlist" && <TierListView />}
         {view === "patch" && <PatchView />}

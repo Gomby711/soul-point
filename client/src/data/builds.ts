@@ -1,6 +1,35 @@
 import type { BuildType } from "@/hooks/useChampionData";
 
 export interface ItemRef { id: number; name: string }
+
+export interface ItemOption {
+  item: ItemRef;
+  pickRate: number;
+  games: number;
+  winRate: number;
+}
+
+export interface CoreOption {
+  items: ItemRef[];
+  pickRate: number;
+  games: number;
+  winRate: number;
+}
+
+export interface StarterOption {
+  items: ItemRef[];
+  pickRate: number;
+  games: number;
+  winRate: number;
+}
+
+export interface BootOption {
+  item: ItemRef;
+  pickRate: number;
+  games: number;
+  winRate: number;
+}
+
 export interface BuildEntry {
   rank: string;
   rankLabel: string;
@@ -18,6 +47,12 @@ export interface BuildEntry {
   spellIds: number[];
   skillOrder: string;
   levelOrder: string[];    // exactly 18 elements
+  starterOptions: StarterOption[];
+  bootsOptions: BootOption[];
+  coreOptions: CoreOption[];
+  fourthOptions: ItemOption[];
+  fifthOptions: ItemOption[];
+  sixthOptions: ItemOption[];
 }
 
 // ── Item pools ────────────────────────────────────────────────
@@ -501,7 +536,73 @@ export const RANK_TIERS = [
   { rank: "GOLD",        label: "Gold",        wr_bonus: 0.0, pr_bonus:  4, games_mult: 0.34 },
 ];
 
-// ── Build generator — returns 3 variants × 5 ranks = 15 entries ─
+// ── Deterministic hash helpers for item option generation ─────
+function strHash(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) & 0x7fffffff;
+  return h / 0x7fffffff;
+}
+
+function mkItemOptions(pool: ItemRef[], baseWr: number, baseGames: number, seed: string): ItemOption[] {
+  const sorted = [...pool].sort((a, b) => strHash(a.name + seed) - strHash(b.name + seed));
+  const picks = sorted.slice(0, 5);
+  const rates = [32, 22, 18, 15, 13];
+  return picks.map((item, i) => {
+    const pr = rates[i] + strHash(item.name + seed + i) * 4 - 2;
+    const games = Math.max(5, Math.floor(baseGames * pr / 100));
+    const wr = Math.min(99, Math.max(35, baseWr + (strHash(item.name + seed) - 0.5) * 12));
+    return { item, pickRate: +pr.toFixed(1), games, winRate: +wr.toFixed(2) };
+  });
+}
+
+function mkCoreOptions(variants: BuildVariant[], baseWr: number, baseGames: number): CoreOption[] {
+  const rates = [28, 20, 14, 10, 8];
+  return variants.map((v, i) => {
+    const pr = rates[i] ?? 5;
+    const games = Math.max(10, Math.floor(baseGames * pr / 100));
+    const wr = Math.min(99, Math.max(35, baseWr + (i === 0 ? 2 : i === 1 ? 0.5 : -1)));
+    return { items: v.items.slice(0, 3), pickRate: +pr.toFixed(1), games, winRate: +wr.toFixed(2) };
+  });
+}
+
+function mkStarterOptions(starters: ItemRef[][], baseWr: number, baseGames: number): StarterOption[] {
+  const rates = [55, 32, 13];
+  return starters.slice(0, 3).map((items, i) => {
+    const pr = rates[i] ?? 5;
+    const games = Math.max(5, Math.floor(baseGames * pr / 100));
+    const wr = Math.min(99, Math.max(35, baseWr + (i === 0 ? 0 : -1.5)));
+    return { items, pickRate: +pr.toFixed(1), games, winRate: +wr.toFixed(2) };
+  });
+}
+
+function mkBootsOptions(boots: ItemRef[], baseWr: number, baseGames: number): BootOption[] {
+  const rates = [52, 28, 12, 8];
+  return boots.slice(0, 4).map((item, i) => {
+    const pr = rates[i] ?? 3;
+    const games = Math.max(5, Math.floor(baseGames * pr / 100));
+    const wr = Math.min(99, Math.max(35, baseWr + (i === 0 ? 0.3 : -0.8)));
+    return { item, pickRate: +pr.toFixed(1), games, winRate: +wr.toFixed(2) };
+  });
+}
+
+// Pool of common boots per archetype for boots options
+const BOOTS_POOL: Record<BuildType, ItemRef[]> = {
+  MAGE:            [ITEMS.sorcShoes, ITEMS.ionian, ITEMS.mercTreads, ITEMS.steelcaps],
+  AP_ASSASSIN:     [ITEMS.sorcShoes, ITEMS.ionian, ITEMS.mercTreads, ITEMS.steelcaps],
+  AD_ASSASSIN:     [ITEMS.ionian, ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.swiftness],
+  MARKSMAN:        [ITEMS.berserkers, ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.swiftness],
+  FIGHTER:         [ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.ionian, ITEMS.swiftness],
+  BRUISER:         [ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.ionian, ITEMS.swiftness],
+  TANK:            [ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.ionian, ITEMS.swiftness],
+  SUPPORT_AP:      [ITEMS.ionian, ITEMS.sorcShoes, ITEMS.mercTreads, ITEMS.steelcaps],
+  SUPPORT_TANK:    [ITEMS.mobility, ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.ionian],
+  ENCHANTER:       [ITEMS.ionian, ITEMS.mobility, ITEMS.steelcaps, ITEMS.mercTreads],
+  JUNGLE_ASSASSIN: [ITEMS.ionian, ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.swiftness],
+  JUNGLE_FIGHTER:  [ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.ionian, ITEMS.swiftness],
+  AP_FIGHTER:      [ITEMS.ionian, ITEMS.sorcShoes, ITEMS.mercTreads, ITEMS.steelcaps],
+};
+
+// ── Build generator — returns 3 variants × 6 ranks = 18 entries ─
 export function getBuild(
   champName: string,
   buildType: BuildType,
@@ -513,33 +614,45 @@ export function getBuild(
   const runePool  = RUNES[buildType]   ?? RUNES.FIGHTER;
   const spellPool = SPELLS[buildType]  ?? SPELLS.FIGHTER;
   const loPool    = LEVEL_ORDERS[buildType] ?? LEVEL_ORDERS.FIGHTER;
+  const optPool   = OPTIONAL_ITEMS[buildType] ?? [];
+  const bootsPool = BOOTS_POOL[buildType] ?? [ITEMS.steelcaps, ITEMS.mercTreads, ITEMS.ionian];
+
+  const allStarters = variants.map(v => v.startItems);
+  const coreOpts    = mkCoreOptions(variants, baseWinRate, baseGames);
 
   return RANK_TIERS.flatMap(tier =>
     variants.map((variant, vi) => {
       const rune     = runePool[vi]  ?? runePool[0];
       const spells   = spellPool[vi] ?? spellPool[0];
       const lo       = loPool[vi]    ?? loPool[0];
-      // Small variance per variant
       const wrVar  = vi === 0 ? 0 : vi === 1 ? -0.5 : -1.0;
       const prVar  = vi === 0 ? 0 : vi === 1 ?  0.8 : -0.8;
+      const wr = Math.min(99, +(baseWinRate + tier.wr_bonus + wrVar).toFixed(1));
+      const rankGames = Math.max(10, Math.floor(baseGames * tier.games_mult));
 
       return {
-        rank:          tier.rank,
-        rankLabel:     tier.label,
-        buildName:     variant.name,
-        buildDesc:     variant.desc,
-        winRate:       Math.min(99, +(baseWinRate + tier.wr_bonus + wrVar).toFixed(1)),
-        pickRate:      Math.max(0.1, +(basePickRate + tier.pr_bonus + prVar).toFixed(1)),
-        games:         Math.max(10, Math.floor(baseGames * tier.games_mult * (vi === 0 ? 1 : vi === 1 ? 0.55 : 0.3))),
-        boots:         variant.boots,
-        items:         variant.items,
-        startItems:    variant.startItems,
-        optionalItems: OPTIONAL_ITEMS[buildType] ?? [],
-        runes:         rune,
-        spells:        spells.names,
-        spellIds:      spells.ids,
-        skillOrder:    compactOrder(lo),
-        levelOrder:    lo,
+        rank:           tier.rank,
+        rankLabel:      tier.label,
+        buildName:      variant.name,
+        buildDesc:      variant.desc,
+        winRate:        wr,
+        pickRate:       Math.max(0.1, +(basePickRate + tier.pr_bonus + prVar).toFixed(1)),
+        games:          Math.max(10, Math.floor(rankGames * (vi === 0 ? 1 : vi === 1 ? 0.55 : 0.3))),
+        boots:          variant.boots,
+        items:          variant.items,
+        startItems:     variant.startItems,
+        optionalItems:  optPool,
+        runes:          rune,
+        spells:         spells.names,
+        spellIds:       spells.ids,
+        skillOrder:     compactOrder(lo),
+        levelOrder:     lo,
+        starterOptions: mkStarterOptions(allStarters, wr, rankGames),
+        bootsOptions:   mkBootsOptions(bootsPool, wr, rankGames),
+        coreOptions:    coreOpts,
+        fourthOptions:  mkItemOptions(optPool.slice(0, 6),   wr, rankGames, champName + tier.rank + "4"),
+        fifthOptions:   mkItemOptions(optPool.slice(0, 6),   wr, rankGames, champName + tier.rank + "5"),
+        sixthOptions:   mkItemOptions(optPool.slice(0, 6),   wr, rankGames, champName + tier.rank + "6"),
       };
     })
   );

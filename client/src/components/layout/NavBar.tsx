@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sword, Target, BookOpen, Crown, Zap, BarChart2, Map } from "lucide-react";
+import { Sword, Target, Crown, Zap, BarChart2, Map } from "lucide-react";
 import type { View } from "@/App";
 import { getDragonVersion } from "@/api/client";
 
@@ -11,7 +11,6 @@ interface NavBarProps {
 const LINKS: { id: View; label: string; Icon: React.ElementType }[] = [
   { id: "home",        label: "Home",        Icon: Sword },
   { id: "champions",   label: "Champions",   Icon: Target },
-  { id: "builds",      label: "Builds",      Icon: BookOpen },
   { id: "leaderboard", label: "Leaderboard", Icon: Crown },
   { id: "tierlist",    label: "Tier List",   Icon: BarChart2 },
   { id: "patch",       label: "Patch",       Icon: Map },
