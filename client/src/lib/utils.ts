@@ -26,7 +26,7 @@ export const QUEUE_NAMES: Record<number, string> = {
   430: "Normal Blind",
   900: "URF",
   1700: "Arena",
-  1900: "URF",
+  1900: "ARAM Mayhem",
   83: "Co-op vs AI",
   700: "Clash",
 };

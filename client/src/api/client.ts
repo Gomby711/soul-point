@@ -121,14 +121,14 @@ export async function getProfileIconUrl(iconId: number): Promise<string> {
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${iconId}.png`;
 }
 
-export function getSummonerSpellImage(spellId: number): string {
+export function getSummonerSpellImage(spellId: number, version = "26.13.1"): string {
   const spellMap: Record<number, string> = {
     1: "SummonerBoost", 3: "SummonerExhaust", 4: "SummonerFlash",
     6: "SummonerHaste", 7: "SummonerHeal", 11: "SummonerSmite",
     12: "SummonerTeleport", 13: "SummonerMana", 14: "SummonerDot",
     21: "SummonerBarrier", 32: "SummonerSnowball",
   };
-  return `https://ddragon.leagueoflegends.com/cdn/14.9.1/img/spell/${spellMap[spellId] ?? "SummonerFlash"}.png`;
+  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${spellMap[spellId] ?? "SummonerFlash"}.png`;
 }
 
 // ── LoL Data MCP (champion stats, abilities, items, runes) ───
@@ -263,6 +263,7 @@ export function fetchLeaderboard(region: Region, tier: string = "CHALLENGER"): P
   entries: Array<{
     summonerId: string;
     summonerName: string;
+    puuid?: string;
     leaguePoints: number;
     rank: string;
     wins: number;
@@ -277,4 +278,8 @@ export function fetchLeaderboard(region: Region, tier: string = "CHALLENGER"): P
   queue: string;
 }> {
   return get(`/leaderboard/${region}/${tier}`);
+}
+
+export function fetchRiotIdByPuuid(puuid: string, region: Region): Promise<{ gameName: string; tagLine: string }> {
+  return get(`/riotid/${region}/${encodeURIComponent(puuid)}`);
 }

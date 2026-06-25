@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sword, Target, Crown, BarChart2, Map } from "lucide-react";
+import { Sword, Target, Crown, BarChart2, Map, Zap } from "lucide-react";
 import type { View } from "@/App";
 import { getDragonVersion } from "@/api/client";
 

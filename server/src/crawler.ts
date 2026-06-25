@@ -2,6 +2,7 @@ import { riotFetch, platformUrl, regionalUrl } from "./riot.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "../data");
@@ -36,6 +37,7 @@ export interface CrawlStatus {
   startedAt: number | null;
   completedAt: number | null;
   region: string;
+  regionsQueued: string[];
 }
 
 let crawlStatus: CrawlStatus = {
@@ -51,6 +53,7 @@ let crawlStatus: CrawlStatus = {
   startedAt: null,
   completedAt: null,
   region: "NA",
+  regionsQueued: [],
 };
 
 export function getCrawlStatus(): CrawlStatus {
@@ -91,19 +94,53 @@ async function saveCrawledMatches(set: Set<string>) {
   );
 }
 
-function getCoreItems(item0: number, item1: number, item2: number, item3: number, item4: number, item5: number): number[] {
-  return [item0, item1, item2, item3, item4, item5]
+// ── API key change detection ──────────────────────────────────
+
+function keyHash(apiKey: string): string {
+  return crypto.createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
+}
+
+async function loadLastKeyHash(): Promise<string | null> {
+  try {
+    const raw = await fs.readFile(path.join(DATA_DIR, "last-key-hash.json"), "utf-8");
+    return (JSON.parse(raw) as { hash: string }).hash;
+  } catch {
+    return null;
+  }
+}
+
+async function saveLastKeyHash(hash: string) {
+  await ensureDataDir();
+  await fs.writeFile(path.join(DATA_DIR, "last-key-hash.json"), JSON.stringify({ hash, savedAt: Date.now() }), "utf-8");
+}
+
+export async function hasApiKeyChanged(apiKey: string): Promise<boolean> {
+  const current = keyHash(apiKey);
+  const last = await loadLastKeyHash();
+  if (current !== last) {
+    await saveLastKeyHash(current);
+    return true;
+  }
+  return false;
+}
+
+// ── Item parsing ──────────────────────────────────────────────
+
+function getCoreItems(...items: number[]): number[] {
+  return items
     .filter(id => id !== 0 && !BOOT_IDS.has(id) && !TRINKET_IDS.has(id))
     .sort((a, b) => a - b)
     .slice(0, 3);
 }
 
-function makeBuildKey(keystoneId: number, coreItems: number[]): string {
-  return `${keystoneId}|${coreItems.join(",")}`;
+// Build key includes keystone + primary rune path + sorted core items
+// This ensures builds on different rune paths are tracked separately
+function makeBuildKey(keystoneId: number, primaryPath: number, secondaryPath: number, coreItems: number[]): string {
+  return `${keystoneId}:${primaryPath}:${secondaryPath}|${coreItems.join(",")}`;
 }
 
-// Rate limiter — stays safely under dev key's 100 req/2 min limit
-const RATE_MS = 1800;
+// ── Rate limiter — dev key: 100 req/2 min ─────────────────────
+const RATE_MS = 1300; // ~46 req/min, well under 50/s and 100/2min
 let lastReqTime = 0;
 
 async function throttle(url: string, apiKey: string): Promise<unknown> {
@@ -113,16 +150,43 @@ async function throttle(url: string, apiKey: string): Promise<unknown> {
   return riotFetch(url, apiKey);
 }
 
+// ── Crawl queue (multi-region sequential) ────────────────────
+
+interface CrawlJob {
+  apiKey: string;
+  region: string;
+  playerCount: number;
+  matchesPerPlayer: number;
+}
+
+const crawlQueue: CrawlJob[] = [];
+let isProcessingQueue = false;
+
+async function processCrawlQueue() {
+  if (isProcessingQueue || crawlQueue.length === 0) return;
+  isProcessingQueue = true;
+
+  while (crawlQueue.length > 0) {
+    const job = crawlQueue.shift()!;
+    crawlStatus.regionsQueued = crawlQueue.map(j => j.region);
+    await runCrawl(job).catch(err => {
+      console.error(`[Crawler] Region ${job.region} crawl error:`, (err as Error).message);
+    });
+  }
+
+  isProcessingQueue = false;
+}
+
 export async function startCrawl(opts: {
   apiKey: string;
   region?: string;
   playerCount?: number;
   matchesPerPlayer?: number;
 }) {
-  if (crawlStatus.state === "running") throw new Error("Crawl already in progress.");
+  if (crawlStatus.state === "running" || isProcessingQueue) throw new Error("Crawl already in progress.");
   const region = opts.region ?? "NA";
-  const playerCount = Math.min(opts.playerCount ?? 50, 300);
-  const matchesPerPlayer = Math.min(opts.matchesPerPlayer ?? 10, 20);
+  const playerCount = Math.min(opts.playerCount ?? 100, 500);
+  const matchesPerPlayer = Math.min(opts.matchesPerPlayer ?? 15, 20);
 
   crawlStatus = {
     state: "running",
@@ -133,10 +197,11 @@ export async function startCrawl(opts: {
     processedMatches: 0,
     champsCovered: 0,
     matchesInDB: 0,
-    message: "Starting crawl...",
+    message: `Starting crawl for ${region}...`,
     startedAt: Date.now(),
     completedAt: null,
     region,
+    regionsQueued: [],
   };
 
   runCrawl({ apiKey: opts.apiKey, region, playerCount, matchesPerPlayer }).catch(err => {
@@ -146,14 +211,31 @@ export async function startCrawl(opts: {
   });
 }
 
-async function runCrawl(opts: {
+// Start crawls for multiple regions in sequence
+export function queueMultiRegionCrawl(opts: {
   apiKey: string;
-  region: string;
-  playerCount: number;
-  matchesPerPlayer: number;
+  regions: string[];
+  playerCount?: number;
+  matchesPerPlayer?: number;
 }) {
+  const playerCount = Math.min(opts.playerCount ?? 100, 500);
+  const matchesPerPlayer = Math.min(opts.matchesPerPlayer ?? 15, 20);
+
+  for (const region of opts.regions) {
+    crawlQueue.push({ apiKey: opts.apiKey, region, playerCount, matchesPerPlayer });
+  }
+
+  crawlStatus.regionsQueued = crawlQueue.map(j => j.region);
+  processCrawlQueue().catch(err => console.error("[Crawler] Queue error:", err));
+}
+
+async function runCrawl(opts: CrawlJob) {
   const { apiKey, region, playerCount, matchesPerPlayer } = opts;
   await ensureDataDir();
+
+  crawlStatus.state = "running";
+  crawlStatus.region = region;
+  crawlStatus.startedAt = crawlStatus.startedAt ?? Date.now();
 
   const stats = await loadBuildStats();
   const crawled = await loadCrawledMatches();
@@ -161,7 +243,7 @@ async function runCrawl(opts: {
   const regUrl = regionalUrl(region);
 
   // ── Phase 1: Collect PUUIDs from Challenger → GM → Master ──
-  crawlStatus.message = "Fetching high-elo player list...";
+  crawlStatus.message = `[${region}] Fetching high-elo player list...`;
   const puuids: string[] = [];
   const tiers = ["challengerleagues", "grandmasterleagues", "masterleagues"] as const;
 
@@ -169,27 +251,28 @@ async function runCrawl(opts: {
     if (puuids.length >= playerCount) break;
     try {
       const url = `${platUrl}/lol/league/v4/${tier}/by-queue/RANKED_SOLO_5x5`;
-      const data = await throttle(url, apiKey) as { entries: Array<{ puuid?: string; leaguePoints: number }> };
-      // Sort by LP desc so we seed from the highest-ranked
+      const data = await throttle(url, apiKey) as {
+        entries: Array<{ puuid?: string; summonerId?: string; leaguePoints: number }>;
+      };
       const sorted = [...data.entries].sort((a, b) => b.leaguePoints - a.leaguePoints);
       for (const e of sorted) {
         if (e.puuid && puuids.length < playerCount) puuids.push(e.puuid);
       }
-      crawlStatus.message = `Seeded ${puuids.length} players from ${tier.replace("leagues", "")}...`;
+      crawlStatus.message = `[${region}] Seeded ${puuids.length} players from ${tier.replace("leagues", "")}...`;
     } catch (e) {
-      console.error(`[Crawler] Failed ${tier}:`, (e as Error).message);
+      console.error(`[Crawler] [${region}] Failed ${tier}:`, (e as Error).message);
     }
   }
 
   crawlStatus.totalPlayers = puuids.length;
 
-  // ── Phase 2: Collect match IDs ──
+  // ── Phase 2: Collect match IDs (ranked solo only, queue=420) ──
   const allMatchIds: string[] = [];
 
   for (let i = 0; i < puuids.length; i++) {
     crawlStatus.processedPlayers = i + 1;
-    crawlStatus.progress = Math.floor((i / puuids.length) * 25);
-    crawlStatus.message = `Fetching match IDs: player ${i + 1}/${puuids.length}`;
+    crawlStatus.progress = Math.floor((i / Math.max(puuids.length, 1)) * 25);
+    crawlStatus.message = `[${region}] Fetching match IDs: player ${i + 1}/${puuids.length}`;
 
     try {
       const url = `${regUrl}/lol/match/v5/matches/by-puuid/${puuids[i]}/ids?count=${matchesPerPlayer}&queue=420`;
@@ -198,7 +281,7 @@ async function runCrawl(opts: {
         if (!crawled.has(id) && !allMatchIds.includes(id)) allMatchIds.push(id);
       }
     } catch (e) {
-      console.error(`[Crawler] Match ID fetch failed for player ${i}:`, (e as Error).message);
+      console.error(`[Crawler] [${region}] Match ID fetch failed for player ${i}:`, (e as Error).message);
     }
   }
 
@@ -208,8 +291,8 @@ async function runCrawl(opts: {
   // ── Phase 3: Process match details ──
   for (let i = 0; i < allMatchIds.length; i++) {
     crawlStatus.processedMatches = i + 1;
-    crawlStatus.progress = 25 + Math.floor((i / allMatchIds.length) * 70);
-    crawlStatus.message = `Processing match ${i + 1}/${allMatchIds.length}...`;
+    crawlStatus.progress = 25 + Math.floor((i / Math.max(allMatchIds.length, 1)) * 70);
+    crawlStatus.message = `[${region}] Processing match ${i + 1}/${allMatchIds.length}...`;
 
     try {
       const url = `${regUrl}/lol/match/v5/matches/${allMatchIds[i]}`;
@@ -232,7 +315,7 @@ async function runCrawl(opts: {
 
       for (const p of match.info.participants) {
         const coreItems = getCoreItems(p.item0, p.item1, p.item2, p.item3, p.item4, p.item5);
-        if (coreItems.length < 2) continue; // not enough items — early FF or incomplete
+        if (coreItems.length < 2) continue;
 
         const primary = p.perks?.styles?.[0];
         const secondary = p.perks?.styles?.[1];
@@ -241,13 +324,15 @@ async function runCrawl(opts: {
         const keystoneId = primary.selections[0]?.perk ?? 0;
         if (!keystoneId) continue;
 
+        // Full rune selection — primary slots [0..3] + secondary slots [0..1]
         const runes = [
           ...primary.selections.map(s => s.perk),
           ...secondary.selections.map(s => s.perk),
         ];
 
         if (!stats[p.championName]) stats[p.championName] = {};
-        const key = makeBuildKey(keystoneId, coreItems);
+        // Key includes rune paths so different rune setups are separate builds
+        const key = makeBuildKey(keystoneId, primary.style, secondary.style, coreItems);
 
         if (!stats[p.championName][key]) {
           stats[p.championName][key] = {
@@ -266,14 +351,14 @@ async function runCrawl(opts: {
 
       crawled.add(allMatchIds[i]);
 
-      if ((i + 1) % 30 === 0) {
+      if ((i + 1) % 25 === 0) {
         await saveBuildStats(stats);
         await saveCrawledMatches(crawled);
         crawlStatus.champsCovered = Object.keys(stats).length;
         crawlStatus.matchesInDB = crawled.size;
       }
     } catch (e) {
-      console.error(`[Crawler] Match ${allMatchIds[i]} failed:`, (e as Error).message);
+      console.error(`[Crawler] [${region}] Match ${allMatchIds[i]} failed:`, (e as Error).message);
     }
   }
 
@@ -281,10 +366,21 @@ async function runCrawl(opts: {
   await saveBuildStats(stats);
   await saveCrawledMatches(crawled);
 
-  crawlStatus.state = "done";
-  crawlStatus.progress = 100;
-  crawlStatus.champsCovered = Object.keys(stats).length;
-  crawlStatus.matchesInDB = crawled.size;
-  crawlStatus.completedAt = Date.now();
-  crawlStatus.message = `Done! Processed ${allMatchIds.length} new matches across ${Object.keys(stats).length} champions.`;
+  const nextQueue = crawlQueue.map(j => j.region);
+  const isDone = nextQueue.length === 0;
+
+  crawlStatus = {
+    ...crawlStatus,
+    state: isDone ? "done" : "idle",
+    progress: isDone ? 100 : 0,
+    champsCovered: Object.keys(stats).length,
+    matchesInDB: crawled.size,
+    completedAt: isDone ? Date.now() : null,
+    message: isDone
+      ? `Done! Processed ${allMatchIds.length} new matches across ${Object.keys(stats).length} champions.`
+      : `[${region}] complete — ${allMatchIds.length} matches. Starting ${nextQueue[0]}...`,
+    regionsQueued: nextQueue,
+  };
+
+  console.log(`[Crawler] [${region}] Finished — ${allMatchIds.length} new matches, ${Object.keys(stats).length} champs`);
 }

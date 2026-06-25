@@ -67,6 +67,10 @@ export interface MatchParticipant {
   quadraKills: number;
   pentaKills: number;
   largestMultiKill: number;
+  champLevel?: number;
+  wardsPlaced?: number;
+  wardsKilled?: number;
+  totalDamageTaken?: number;
   profileIcon: number;
   summoner1Id: number;
   summoner2Id: number;

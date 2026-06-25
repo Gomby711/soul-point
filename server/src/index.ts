@@ -10,7 +10,7 @@ import {
   getChampionStats, getChampionAbilities, getChampionPatchNote,
   getItemData, getItemPatchNote, getRuneData, getRunePatchNote,
 } from "./lol-data-mcp.js";
-import { startCrawl, getCrawlStatus } from "./crawler.js";
+import { startCrawl, queueMultiRegionCrawl, getCrawlStatus, hasApiKeyChanged } from "./crawler.js";
 import { getChampionBuilds, getAllBuilds, getChampionList } from "./algo.js";
 
 const app  = express();
@@ -62,12 +62,23 @@ function requireKey(res: express.Response): boolean {
   return true;
 }
 
-// ── Account ───────────────────────────────────────────────────
+// ── Account by Riot ID ────────────────────────────────────────
 app.get("/api/account/:region/:gameName/:tagLine", cached(300), async (req, res) => {
   if (!requireKey(res)) return;
   try {
     const { region, gameName, tagLine } = req.params as Record<string, string>;
     const url = `${regionalUrl(region)}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
+    const data = await riotFetch(url, KEY);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── Account by PUUID (for leaderboard player lookups) ─────────
+app.get("/api/riotid/:region/:puuid", cached(600), async (req, res) => {
+  if (!requireKey(res)) return;
+  try {
+    const { region, puuid } = req.params as Record<string, string>;
+    const url = `${regionalUrl(region)}/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuid)}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
   } catch (e) { handleError(e, res); }
@@ -144,21 +155,52 @@ app.get("/api/challenges/:region/:puuid", cached(300), async (req, res) => {
 });
 
 // ── Leaderboard ───────────────────────────────────────────────
-app.get("/api/leaderboard/:region/:tier", cached(300), async (req, res) => {
+app.get("/api/leaderboard/:region/:tier", cached(180), async (req, res) => {
   if (!requireKey(res)) return;
   try {
     const { region, tier } = req.params as Record<string, string>;
     const queue = "RANKED_SOLO_5x5";
     let url: string;
-    if (tier === "CHALLENGER") {
+    const tierUpper = tier.toUpperCase();
+    if (tierUpper === "CHALLENGER") {
       url = `${platformUrl(region)}/lol/league/v4/challengerleagues/by-queue/${queue}`;
-    } else if (tier === "GRANDMASTER") {
+    } else if (tierUpper === "GRANDMASTER") {
       url = `${platformUrl(region)}/lol/league/v4/grandmasterleagues/by-queue/${queue}`;
     } else {
       url = `${platformUrl(region)}/lol/league/v4/masterleagues/by-queue/${queue}`;
     }
-    const data = await riotFetch(url, KEY);
-    res.json(data);
+    const data = await riotFetch(url, KEY) as {
+      tier: string;
+      name: string;
+      queue: string;
+      leagueId: string;
+      entries: Array<{
+        summonerId: string;
+        puuid?: string;
+        summonerName?: string;
+        riotIdGameName?: string;
+        riotIdTagline?: string;
+        leaguePoints: number;
+        rank: string;
+        wins: number;
+        losses: number;
+        hotStreak: boolean;
+        veteran: boolean;
+        freshBlood: boolean;
+        inactive: boolean;
+      }>;
+    };
+
+    // Normalize entries — prefer riotIdGameName if summonerName is empty
+    const normalized = {
+      ...data,
+      entries: data.entries.map(e => ({
+        ...e,
+        summonerName: e.summonerName?.trim() || e.riotIdGameName || `Player ${e.leaguePoints}LP`,
+      })),
+    };
+
+    res.json(normalized);
   } catch (e) { handleError(e, res); }
 });
 
@@ -467,23 +509,59 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
+const CRAWL_REGIONS = ["NA", "KR", "EUW", "EUNE", "BR", "LAN", "LAS", "OCE", "TR", "RU", "JP"];
+const CRAWL_PLAYER_COUNT = 150;
+const CRAWL_MATCHES_PER = 15;
+const RECRAWL_INTERVAL_MS = 2.5 * 60 * 60 * 1000; // 2.5 hours
+
+async function autoStartCrawlIfNeeded() {
+  if (!KEY) return;
+  try {
+    const [keyChanged, existingBuilds] = await Promise.all([
+      hasApiKeyChanged(KEY),
+      getAllBuilds(),
+    ]);
+
+    const noData = existingBuilds.length === 0;
+
+    if (keyChanged || noData) {
+      const reason = keyChanged ? "new API key detected" : "no build data found";
+      console.log(`\n  📊  Soul Point Crawler starting (${reason})...`);
+      console.log(`     Regions: ${CRAWL_REGIONS.join(" → ")} | ${CRAWL_PLAYER_COUNT} players × ${CRAWL_MATCHES_PER} matches each`);
+      queueMultiRegionCrawl({
+        apiKey: KEY,
+        regions: CRAWL_REGIONS,
+        playerCount: CRAWL_PLAYER_COUNT,
+        matchesPerPlayer: CRAWL_MATCHES_PER,
+      });
+    } else {
+      console.log(`  ✓  Build data loaded: ${existingBuilds.length} champions covered`);
+      console.log(`     Next refresh in ~6h (or restart with a new key to trigger immediately)\n`);
+    }
+  } catch (e) {
+    console.error("  ⚠️  Auto-crawl init failed:", (e as Error).message);
+  }
+}
+
 app.listen(PORT, async () => {
   console.log(`\n  ⚔  Soul Point API — http://localhost:${PORT}`);
   if (!KEY) {
     console.log("  ⚠️  RIOT_API_KEY not set. Add it to server/.env to enable live data.\n");
   } else {
-    console.log("  ✓  Riot API key configured\n");
-    // Auto-start crawl on startup if no build data exists yet
-    try {
-      const existingBuilds = await getAllBuilds();
-      if (existingBuilds.length === 0) {
-        console.log("  📊  No build data found — auto-starting match crawl (NA, 50 players)...");
-        await startCrawl({ apiKey: KEY, region: "NA", playerCount: 50, matchesPerPlayer: 10 });
-      } else {
-        console.log(`  ✓  Build data loaded: ${existingBuilds.length} champions covered\n`);
-      }
-    } catch (e) {
-      console.error("  ⚠️  Auto-crawl init failed:", (e as Error).message);
-    }
+    console.log("  ✓  Riot API key configured");
+    await autoStartCrawlIfNeeded();
+
+    // Schedule periodic re-crawl every 6 hours to keep data fresh
+    setInterval(async () => {
+      const status = getCrawlStatus();
+      if (status.state === "running") return;
+      console.log("\n  🔄  Scheduled Soul Point re-crawl starting...");
+      queueMultiRegionCrawl({
+        apiKey: KEY,
+        regions: CRAWL_REGIONS,
+        playerCount: CRAWL_PLAYER_COUNT,
+        matchesPerPlayer: CRAWL_MATCHES_PER,
+      });
+    }, RECRAWL_INTERVAL_MS);
   }
 });
