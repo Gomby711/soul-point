@@ -21,6 +21,8 @@ WORKDIR /app
 # Copy compiled server
 COPY --from=build-server /build/server/dist ./dist
 COPY --from=build-server /build/server/node_modules ./node_modules
+# Copy static assets that tsc doesn't emit
+COPY server/src/crawl-monitor.html ./dist/crawl-monitor.html
 
 # Copy built client into ./public so Express can serve it
 COPY --from=build-client /build/client/dist ./public

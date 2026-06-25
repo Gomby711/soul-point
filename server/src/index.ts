@@ -490,6 +490,12 @@ app.get("/api/sp/builds", cached(300), async (_req, res) => {
   } catch (e) { handleError(e, res); }
 });
 
+// ── Crawl monitor dashboard (standalone, not part of React SPA) ──
+app.get("/crawl-monitor", (_req, res) => {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  res.sendFile(path.join(__dirname, "crawl-monitor.html"));
+});
+
 // ── Health check ──────────────────────────────────────────────
 app.get("/api/health", (_, res) => {
   res.json({

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Soul Point — Crawl Monitor</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --gold:#C89B3C;--gold-dim:#785A28;--teal:#0AC8B9;--red:#FF4E50;
+    --bg:#010A13;--bg2:#060E1A;--bg3:#0A1428;--border:#1E2D3D;
+    --text:#C8AA6E;--muted:#5B7A8C;--sub:#A0B4C8;
+  }
+  body{background:var(--bg);color:var(--sub);font-family:'Segoe UI',monospace;min-height:100vh;padding:0}
+  .topbar{height:3px;background:linear-gradient(90deg,transparent,var(--gold-dim) 30%,var(--gold) 50%,var(--gold-dim) 70%,transparent)}
+  header{background:rgba(1,10,19,.97);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:12px}
+  .logo{font-family:'Georgia',serif;font-weight:900;font-size:18px;letter-spacing:.2em;color:var(--gold)}
+  .logo span{color:var(--sub)}
+  .badge{font-size:10px;font-family:monospace;padding:2px 8px;border:1px solid var(--border);color:var(--muted);border-radius:2px}
+  .badge.live{border-color:rgba(10,200,185,.3);color:var(--teal);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  main{max-width:900px;margin:0 auto;padding:24px 20px;display:grid;gap:16px}
+  .card{background:var(--bg2);border:1px solid var(--border);padding:20px}
+  .card-title{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:14px;font-family:monospace}
+  .state-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .dot.running{background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pulse 1.2s infinite}
+  .dot.done{background:var(--gold)}
+  .dot.idle{background:var(--muted)}
+  .dot.error{background:var(--red)}
+  .state-label{font-size:16px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:monospace}
+  .state-label.running{color:var(--teal)}
+  .state-label.done{color:var(--gold)}
+  .state-label.idle{color:var(--muted)}
+  .state-label.error{color:var(--red)}
+  .message{font-size:12px;color:var(--sub);font-family:monospace;margin-top:4px;min-height:18px}
+  .progress-wrap{margin:16px 0 8px}
+  .progress-bar-bg{background:var(--bg3);border:1px solid var(--border);height:14px;border-radius:1px;overflow:hidden}
+  .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));transition:width .6s ease;min-width:2px}
+  .progress-pct{font-size:22px;font-weight:900;color:var(--gold);font-family:monospace;margin-bottom:4px}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:4px}
+  .stat{background:var(--bg3);border:1px solid var(--border);padding:12px 14px}
+  .stat-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:6px;font-family:monospace}
+  .stat-val{font-size:20px;font-weight:900;color:var(--text);font-family:monospace}
+  .stat-sub{font-size:10px;color:var(--muted);margin-top:2px;font-family:monospace}
+  .regions-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .region-chip{padding:5px 12px;border:1px solid var(--border);font-size:11px;font-family:monospace;letter-spacing:.08em;font-weight:700;border-radius:2px}
+  .region-chip.active{border-color:var(--teal);color:var(--teal);box-shadow:0 0 8px rgba(10,200,185,.2)}
+  .region-chip.done{border-color:var(--gold-dim);color:var(--gold)}
+  .region-chip.queued{color:var(--muted)}
+  .elapsed{font-size:11px;color:var(--muted);font-family:monospace;text-align:right;margin-top:6px}
+  .coverage-bar-bg{background:var(--bg3);border:1px solid var(--border);height:8px;border-radius:1px;overflow:hidden;margin-top:8px}
+  .coverage-bar-fill{height:100%;background:linear-gradient(90deg,var(--teal),#0af0d0);transition:width .6s ease}
+  .coverage-label{font-size:10px;color:var(--muted);font-family:monospace;margin-top:4px}
+  .refresh-note{font-size:10px;color:var(--muted);text-align:center;padding:8px;font-family:monospace}
+  .section-divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);margin:4px 0 14px}
+  footer{text-align:center;padding:20px;font-size:10px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<header>
+  <div class="logo">SOUL<span>POINT</span></div>
+  <div class="badge">CRAWL MONITOR</div>
+  <div class="badge live" id="live-badge">● LIVE</div>
+  <div style="margin-left:auto;font-size:10px;color:var(--muted);font-family:monospace" id="last-updated">—</div>
+</header>
+
+<main>
+
+  <!-- State + Progress -->
+  <div class="card">
+    <div class="card-title">Crawl Status</div>
+    <div class="state-row">
+      <div class="dot idle" id="dot"></div>
+      <div>
+        <div class="state-label idle" id="state-label">Loading...</div>
+        <div class="message" id="message">Connecting to server...</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+    <div class="progress-pct" id="progress-pct">0%</div>
+    <div class="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="elapsed" id="elapsed">—</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="card">
+    <div class="card-title">Stats</div>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-label">Matches in DB</div>
+        <div class="stat-val" id="matches-db">—</div>
+        <div class="stat-sub">unique matches crawled</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">This Session</div>
+        <div class="stat-val" id="matches-processed">—</div>
+        <div class="stat-sub">matches processed</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Players Seeded</div>
+        <div class="stat-val" id="players">—</div>
+        <div class="stat-sub">high-elo PUUIDs</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Champs Covered</div>
+        <div class="stat-val" id="champs-covered">—</div>
+        <div class="stat-sub" id="champs-target-sub">of 170+ champions</div>
+      </div>
+    </div>
+
+    <!-- Coverage bar -->
+    <div style="margin-top:14px">
+      <div style="font-size:10px;color:var(--gold-dim);letter-spacing:.1em;text-transform:uppercase;font-family:monospace;margin-bottom:6px">Champion Coverage (20-game target)</div>
+      <div class="coverage-bar-bg">
+        <div class="coverage-bar-fill" id="coverage-bar" style="width:0%"></div>
+      </div>
+      <div class="coverage-label" id="coverage-label">—</div>
+    </div>
+  </div>
+
+  <!-- Regions -->
+  <div class="card">
+    <div class="card-title">Regions</div>
+    <div class="regions-grid" id="regions-grid">
+      <div class="region-chip queued">Loading...</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="refresh-note" id="refresh-note">Refreshing every 3s</div>
+<footer>Soul Point Crawl Monitor · Internal Tool · Not linked from the live site</footer>
+
+<script>
+const ALL_REGIONS = ["NA","KR","EUW","EUNE","BR","LAN","LAS","OCE","TR","RU","JP"];
+
+let lastStatus = null;
+let completedRegions = [];
+
+function fmt(n) { return n != null ? Number(n).toLocaleString() : "—"; }
+
+function elapsed(startedAt) {
+  if (!startedAt) return "—";
+  const ms = Date.now() - startedAt;
+  const s  = Math.floor(ms / 1000);
+  const m  = Math.floor(s / 60);
+  const h  = Math.floor(m / 60);
+  if (h > 0) return `${h}h ${m % 60}m ${s % 60}s elapsed`;
+  if (m > 0) return `${m}m ${s % 60}s elapsed`;
+  return `${s}s elapsed`;
+}
+
+function render(status) {
+  const state = status.state || "idle";
+  const progress = status.progress || 0;
+
+  // Track completed regions across renders
+  if (lastStatus && lastStatus.region !== status.region && lastStatus.state === "running") {
+    if (!completedRegions.includes(lastStatus.region)) {
+      completedRegions.push(lastStatus.region);
+    }
+  }
+  if (status.state === "done") {
+    ALL_REGIONS.forEach(r => { if (!completedRegions.includes(r)) completedRegions.push(r); });
+  }
+  if (status.state === "idle" || status.state === "error") {
+    completedRegions = [];
+  }
+
+  // Dot + label
+  const dot = document.getElementById("dot");
+  const label = document.getElementById("state-label");
+  dot.className = `dot ${state}`;
+  label.className = `state-label ${state}`;
+  label.textContent = state.toUpperCase();
+
+  document.getElementById("message").textContent = status.message || "—";
+
+  // Progress
+  document.getElementById("progress-pct").textContent = `${progress}%`;
+  document.getElementById("progress-bar").style.width = `${progress}%`;
+
+  // Elapsed
+  document.getElementById("elapsed").textContent = elapsed(status.startedAt);
+
+  // Stats
+  document.getElementById("matches-db").textContent = fmt(status.matchesInDB);
+  document.getElementById("matches-processed").textContent =
+    status.totalMatches > 0
+      ? `${fmt(status.processedMatches)} / ${fmt(status.totalMatches)}`
+      : fmt(status.processedMatches);
+  document.getElementById("players").textContent =
+    status.totalPlayers > 0
+      ? `${fmt(status.processedPlayers)} / ${fmt(status.totalPlayers)}`
+      : "—";
+  document.getElementById("champs-covered").textContent = fmt(status.champsCovered);
+
+  // Coverage bar
+  const atTarget = status.champsAtTarget || 0;
+  const total = Math.max(status.champsCovered || 1, 170);
+  const pct = Math.min(100, Math.round((atTarget / 170) * 100));
+  document.getElementById("coverage-bar").style.width = `${pct}%`;
+  document.getElementById("coverage-label").textContent =
+    `${fmt(atTarget)} of 170+ champions at 20-game target (${pct}%)`;
+  document.getElementById("champs-target-sub").textContent =
+    atTarget > 0 ? `${atTarget} at 20-game target` : "of 170+ champions";
+
+  // Regions
+  const queued = status.regionsQueued || [];
+  const active = status.region;
+  const grid = document.getElementById("regions-grid");
+  grid.innerHTML = ALL_REGIONS.map(r => {
+    let cls = "queued";
+    if (completedRegions.includes(r)) cls = "done";
+    if (r === active && state === "running") cls = "active";
+    const icon = cls === "done" ? "✓ " : cls === "active" ? "⟳ " : "";
+    return `<div class="region-chip ${cls}">${icon}${r}</div>`;
+  }).join("");
+
+  document.getElementById("last-updated").textContent =
+    "Updated " + new Date().toLocaleTimeString();
+
+  lastStatus = status;
+}
+
+async function poll() {
+  try {
+    const res = await fetch("/api/sp/crawl/status");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    render(data);
+    document.getElementById("live-badge").style.opacity = "1";
+    document.getElementById("refresh-note").textContent = "Refreshing every 3s";
+  } catch (e) {
+    document.getElementById("message").textContent = "⚠ Could not reach server: " + e.message;
+    document.getElementById("live-badge").style.opacity = "0.3";
+    document.getElementById("refresh-note").textContent = "Connection error — retrying...";
+  }
+}
+
+poll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>
