@@ -25,8 +25,8 @@ export function fetchSummoner(puuid: string, region: Region): Promise<Summoner> 
   return get(`/summoner/${region}/${puuid}`);
 }
 
-export function fetchLeagueEntries(summonerId: string, region: Region): Promise<LeagueEntry[]> {
-  return get(`/league/${region}/${summonerId}`);
+export function fetchLeagueEntries(puuid: string, region: Region): Promise<LeagueEntry[]> {
+  return get(`/league/${region}/${puuid}`);
 }
 
 // ── Matches ──────────────────────────────────────────────────
@@ -62,8 +62,8 @@ export function fetchChallenges(puuid: string, region: Region): Promise<Challeng
 
 // ── TFT ──────────────────────────────────────────────────────
 
-export function fetchTFTLeague(summonerId: string, region: Region): Promise<TFTLeagueEntry[]> {
-  return get(`/tft/league/${region}/${summonerId}`);
+export function fetchTFTLeague(puuid: string, region: Region): Promise<TFTLeagueEntry[]> {
+  return get(`/tft/league/${region}/${puuid}`);
 }
 
 export function fetchTFTMatchIds(puuid: string, region: Region, count = 20): Promise<string[]> {

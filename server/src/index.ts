@@ -83,11 +83,11 @@ app.get("/api/summoner/:region/:puuid", cached(300), async (req, res) => {
 });
 
 // ── League entries ────────────────────────────────────────────
-app.get("/api/league/:region/:summonerId", cached(120), async (req, res) => {
+app.get("/api/league/:region/:puuid", cached(120), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, summonerId } = req.params as Record<string, string>;
-    const url = `${platformUrl(region)}/lol/league/v4/entries/by-summoner/${summonerId}`;
+    const { region, puuid } = req.params as Record<string, string>;
+    const url = `${platformUrl(region)}/lol/league/v4/entries/by-puuid/${puuid}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
   } catch (e) { handleError(e, res); }
@@ -161,11 +161,11 @@ app.get("/api/leaderboard/:region/:tier", cached(300), async (req, res) => {
 });
 
 // ── TFT League ────────────────────────────────────────────────
-app.get("/api/tft/league/:region/:summonerId", cached(120), async (req, res) => {
+app.get("/api/tft/league/:region/:puuid", cached(120), async (req, res) => {
   if (!requireKey(res)) return;
   try {
-    const { region, summonerId } = req.params as Record<string, string>;
-    const url = `${platformUrl(region)}/tft/league/v1/entries/by-summoner/${summonerId}`;
+    const { region, puuid } = req.params as Record<string, string>;
+    const url = `${platformUrl(region)}/tft/league/v1/entries/by-puuid/${puuid}`;
     const data = await riotFetch(url, KEY);
     res.json(data);
   } catch (e) { handleError(e, res); }

@@ -214,7 +214,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
       const account = await fetchAccount(gameName, tagLine, region);
       const summoner = await fetchSummoner(account.puuid, region);
       const iconUrl = await getProfileIconUrl(summoner.profileIconId);
-      const entries = await fetchLeagueEntries(summoner.id, region);
+      const entries = await fetchLeagueEntries(account.puuid, region);
       const solo = entries.find(e => e.queueType === "RANKED_SOLO_5x5") ?? null;
       const flex = entries.find(e => e.queueType === "RANKED_FLEX_SR") ?? null;
 
@@ -225,7 +225,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
         summonerLevel: summoner.summonerLevel,
         profileIconId: summoner.profileIconId,
         profileIconUrl: iconUrl,
-        summonerId: summoner.id,
+        summonerId: account.puuid,
         puuid: account.puuid,
         soloQueue: solo,
         flexQueue: flex,
@@ -250,7 +250,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
 
       // Load TFT
       try {
-        const tftEntries = await fetchTFTLeague(summoner.id, region);
+        const tftEntries = await fetchTFTLeague(account.puuid, region);
         const tft = tftEntries[0] ?? null;
         if (tft) {
           setState(s => ({
