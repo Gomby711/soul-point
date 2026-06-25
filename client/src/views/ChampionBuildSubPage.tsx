@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, Sword, Zap, Shield, BookOpen, U
 import { type ChampionInfo } from "@/hooks/useChampionData";
 import { getBuild, type BuildEntry } from "@/data/builds";
 import { useRuneData, PATH_COLORS, type RunePath } from "@/hooks/useRuneData";
-import { getDragonVersion, fetchOPGGChampionAnalysis, fetchChampionPatchNotes } from "@/api/client";
+import { getDragonVersion, fetchOPGGChampionAnalysis, fetchOPGGChampionBuilds, fetchChampionPatchNotes } from "@/api/client";
 import { winRateColor } from "@/lib/utils";
 import { RoleIcon } from "@/components/common/RoleIcon";
 
@@ -114,6 +114,9 @@ function fetchAndCache(champName: string, position: string, rankKey: string): Pr
 export function prefetchOPGGBuild(champName: string, position: string, rankKey = "EMERALD") {
   const key = opggKey(champName, position, rankKey);
   if (!_opggCache[key]) fetchAndCache(champName, position, rankKey);
+  // Also prefetch multi-builds
+  const multiKey = `${champName}::${position}`;
+  if (!_multiCache[multiKey]) fetchMultiBuilds(champName, position);
 }
 
 // ── OP.GG live data hook ───────────────────────────────────────
@@ -135,13 +138,52 @@ function useOPGGBuild(champName: string, position: string, rankKey: string) {
   return { parsed, loading };
 }
 
+// ── OP.GG multi-build cache ────────────────────────────────────
+interface OPGGMultiBuildEntry { tier: string; label: string; parsed: OPGGParsed }
+const _multiCache: Record<string, OPGGMultiBuildEntry[]> = {};
+const _multiInflight: Record<string, Promise<OPGGMultiBuildEntry[]>> = {};
+
+function fetchMultiBuilds(champName: string, position: string): Promise<OPGGMultiBuildEntry[]> {
+  const key = `${champName}::${position}`;
+  if (_multiInflight[key]) return _multiInflight[key];
+  const p = fetchOPGGChampionBuilds(champName, position)
+    .then(res =>
+      res.builds
+        .filter(b => b.data !== null)
+        .map(b => ({ tier: b.tier, label: b.label, parsed: b.data as OPGGParsed }))
+    )
+    .catch(() => [] as OPGGMultiBuildEntry[])
+    .then(result => { _multiCache[key] = result; return result; })
+    .finally(() => { delete _multiInflight[key]; });
+  _multiInflight[key] = p;
+  return p;
+}
+
+function useOPGGMultipleBuilds(champName: string, position: string) {
+  const key = `${champName}::${position}`;
+  const [builds, setBuilds] = useState<OPGGMultiBuildEntry[]>(_multiCache[key] ?? []);
+  const [loading, setLoading] = useState(!_multiCache[key]);
+  useEffect(() => {
+    const cached = _multiCache[key];
+    if (cached) { setBuilds(cached); setLoading(false); return; }
+    let cancelled = false;
+    setBuilds([]);
+    setLoading(true);
+    fetchMultiBuilds(champName, position)
+      .then(r => { if (!cancelled) setBuilds(r); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [champName, position, key]);
+  return { builds, loading };
+}
+
 function mergeOPGGBuild(
   parsed: OPGGParsed,
   staticBuild: BuildEntry,
   _paths: RunePath[],
 ): BuildEntry {
   const d = parsed.data;
-  const coreItems = (d.core_items?.ids ?? []).map((id, i) => ({
+  const coreItems = (d.core_items?.ids ?? []).slice(0, 3).map((id, i) => ({
     id, name: d.core_items?.ids_names?.[i] ?? String(id),
   }));
   const starters = (d.starter_items?.ids ?? []).map((id, i) => ({
@@ -1317,30 +1359,44 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
   const [buildVariantIdx, setBuildVariantIdx] = useState(0);
 
   const allBuilds      = useMemo(() => getBuild(champion.name, champion.buildType, champion.winRate, champion.pickRate, champion.games), [champion]);
-  const buildsForRank  = useMemo(() => allBuilds.filter(b => b.rank === rankKey), [allBuilds, rankKey]);
-  const staticBuild    = buildsForRank[buildVariantIdx] ?? buildsForRank[0];
+  const staticBase     = useMemo(() => allBuilds[0] ?? allBuilds.find(b => b.rank === rankKey), [allBuilds, rankKey]);
 
-  const { parsed } = useOPGGBuild(champion.name, champion.primaryRole, rankKey);
+  const { builds: opggMultiBuilds } = useOPGGMultipleBuilds(champion.name, champion.primaryRole);
   const { paths } = useRuneData();
 
-  // OP.GG data only merged into variant 0 (the most popular build)
+  // Merge each OP.GG build with the static base template
+  const buildsForRank = useMemo((): BuildEntry[] => {
+    if (!staticBase) return [];
+    if (opggMultiBuilds.length > 0) {
+      return opggMultiBuilds.map(ob => {
+        const merged = mergeOPGGBuild(ob.parsed, staticBase, paths);
+        merged.buildName = ob.label;
+        merged.buildDesc = `OP.GG Live · ${ob.tier}`;
+        merged.rank = rankKey;
+        merged.rankLabel = ob.label;
+        return merged;
+      });
+    }
+    // Fallback: static builds filtered by rankKey
+    return allBuilds.filter(b => b.rank === rankKey);
+  }, [opggMultiBuilds, staticBase, paths, allBuilds, rankKey]);
+
   const build = useMemo(() => {
-    if (!staticBuild) return null;
-    if (buildVariantIdx === 0 && parsed) return mergeOPGGBuild(parsed, staticBuild, paths);
-    return staticBuild;
-  }, [staticBuild, parsed, paths, buildVariantIdx]);
+    return buildsForRank[buildVariantIdx] ?? buildsForRank[0] ?? null;
+  }, [buildsForRank, buildVariantIdx]);
 
   const { weakAgainst: fallbackWeak, strongAgainst: fallbackStrong } = useCounters(champion, champions);
   const { weakAgainst, strongAgainst } = useMemo(() => {
-    if (!parsed?.data) return { weakAgainst: fallbackWeak, strongAgainst: fallbackStrong };
-    const d = parsed.data;
+    const firstBuild = opggMultiBuilds[0]?.parsed;
+    if (!firstBuild?.data) return { weakAgainst: fallbackWeak, strongAgainst: fallbackStrong };
+    const d = firstBuild.data;
     const weak   = matchOPGGCounters(d.weak_counters   ?? [], champions, false);
     const strong = matchOPGGCounters(d.strong_counters ?? [], champions, true);
     return {
       weakAgainst:   weak.length   ? weak   : fallbackWeak,
       strongAgainst: strong.length ? strong : fallbackStrong,
     };
-  }, [parsed, champions, fallbackWeak, fallbackStrong]);
+  }, [opggMultiBuilds, champions, fallbackWeak, fallbackStrong]);
 
   const isJungler = champion.primaryRole === "Jungle";
   const patch     = version.split(".").slice(0, 2).join(".");
@@ -1456,10 +1512,16 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
           <div className="space-y-4">
 
             {/* Build variant selector */}
-            {buildsForRank.length > 1 && (
+            {buildsForRank.length > 0 && (
               <div className={`${card} overflow-hidden`}>
-                <div className="px-5 pt-4 pb-2">
+                <div className="px-5 pt-4 pb-2 flex items-center gap-3">
                   <span className={sectionLabel} style={{ marginBottom: 0 }}>Build Options</span>
+                  {opggMultiBuilds.length > 0 && (
+                    <span className="text-[9px] font-['Cinzel'] tracking-widest border px-2 py-0.5"
+                      style={{ color: "#0AC8B9", borderColor: "#0AC8B933", background: "#0AC8B908" }}>
+                      OP.GG LIVE
+                    </span>
+                  )}
                 </div>
                 <div className="flex divide-x divide-[#1E2D3D]">
                   {buildsForRank.map((b, i) => (
@@ -1467,7 +1529,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
                       key={i}
                       build={b}
                       selected={buildVariantIdx === i}
-                      onClick={() => setBuildVariantIdx(i)}
+                      onClick={() => { setBuildVariantIdx(i); }}
                     />
                   ))}
                 </div>

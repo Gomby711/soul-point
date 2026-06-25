@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import NodeCache from "node-cache";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { platformUrl, regionalUrl, riotFetch } from "./riot.js";
 import { fetchChampionAnalysis, fetchLaneMetaChampions, fetchChampionSynergies } from "./opgg.js";
 import {
@@ -15,7 +17,14 @@ const KEY  = process.env.RIOT_API_KEY ?? "";
 
 const cache = new NodeCache({ stdTTL: 120, checkperiod: 60 });
 
-app.use(cors({ origin: ["http://localhost:5173", "http://localhost:4173"] }));
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "https://sp.evtlee.com",
+    /\.railway\.app$/,
+  ],
+}));
 app.use(express.json());
 
 // ── Cache middleware ──────────────────────────────────────────
@@ -267,6 +276,27 @@ app.get("/api/opgg/synergies/:name/:position", cached(600), async (req, res) => 
   } catch (e) { handleError(e, res); }
 });
 
+// Returns 3 builds at different tiers for the same champion/position
+app.get("/api/opgg/champion/:name/:position/builds", cached(600), async (req, res) => {
+  try {
+    const { name, position } = req.params as Record<string, string>;
+    const tiers = [
+      { key: "EMERALD",     label: "Most Popular" },
+      { key: "DIAMOND",     label: "High Elo"     },
+      { key: "CHALLENGER",  label: "Challenger"   },
+    ];
+    const settled = await Promise.allSettled(
+      tiers.map(t => fetchChampionAnalysis(name, position, t.key))
+    );
+    const builds = tiers.map((t, i) => ({
+      tier:  t.key,
+      label: t.label,
+      data:  settled[i].status === "fulfilled" ? settled[i].value : null,
+    })).filter(b => b.data !== null);
+    res.json({ builds });
+  } catch (e) { handleError(e, res); }
+});
+
 // ── LoL Data MCP: Champion stats ─────────────────────────────
 app.get("/api/lol/champion/:name/stats", cached(3600), async (req, res) => {
   try {
@@ -381,6 +411,16 @@ app.get("/api/health", (_, res) => {
     message: KEY ? "Riot API key is configured" : "⚠️  Set RIOT_API_KEY in server/.env",
   });
 });
+
+// ── Serve React app in production ─────────────────────────────
+if (process.env.NODE_ENV === "production") {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const publicDir = path.join(__dirname, "../public");
+  app.use(express.static(publicDir));
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(publicDir, "index.html"));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`\n  ⚔  Soul Point API — http://localhost:${PORT}`);

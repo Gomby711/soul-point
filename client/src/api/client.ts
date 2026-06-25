@@ -193,6 +193,15 @@ export async function fetchOPGGChampionAnalysis(
   );
 }
 
+export async function fetchOPGGChampionBuilds(
+  championName: string,
+  position: string,
+): Promise<{ builds: Array<{ tier: string; label: string; data: unknown }> }> {
+  return get(
+    `/opgg/champion/${encodeURIComponent(championName)}/${encodeURIComponent(position)}/builds`,
+  );
+}
+
 export async function fetchOPGGMetaChampions(
   position: string,
   rankKey?: string,
