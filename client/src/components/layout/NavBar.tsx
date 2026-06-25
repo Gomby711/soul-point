@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sword, Target, Crown, Zap, BarChart2, Map } from "lucide-react";
+import { Sword, Target, Crown, BarChart2, Map } from "lucide-react";
 import type { View } from "@/App";
 import { getDragonVersion } from "@/api/client";
 
@@ -14,7 +14,6 @@ const LINKS: { id: View; label: string; Icon: React.ElementType }[] = [
   { id: "leaderboard", label: "Leaderboard", Icon: Crown },
   { id: "tierlist",    label: "Tier List",   Icon: BarChart2 },
   { id: "patch",       label: "Patch",       Icon: Map },
-  { id: "soulpoint",   label: "Soul Point",  Icon: Zap },
 ];
 
 export function NavBar({ view, setView }: NavBarProps) {
@@ -27,11 +26,10 @@ export function NavBar({ view, setView }: NavBarProps) {
       const parts = v.split(".");
       const patchStr = parts.slice(0, 2).join(".");
       const seasonNum = parseInt(parts[0], 10);
-      // Season year: S1=2011, so year = 2010 + seasonNum
-      const year = 2010 + seasonNum;
+      const year = 2000 + seasonNum;
       setPatch(patchStr);
       setSeason(`S${seasonNum} · ${year}`);
-    }).catch(() => { setPatch("16.13"); setSeason("S16 · 2026"); });
+    }).catch(() => { setPatch("26.13"); setSeason("S26 · 2026"); });
   }, []);
 
   return (

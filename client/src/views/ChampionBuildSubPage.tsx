@@ -3,13 +3,14 @@ import { ChevronLeft, ChevronRight, ChevronDown, Sword, Zap, Shield, BookOpen, U
 import { type ChampionInfo } from "@/hooks/useChampionData";
 import { getBuild, type BuildEntry } from "@/data/builds";
 import { useRuneData, PATH_COLORS, type RunePath } from "@/hooks/useRuneData";
-import { getDragonVersion, fetchOPGGChampionAnalysis, fetchOPGGChampionBuilds, fetchChampionPatchNotes } from "@/api/client";
+import { getDragonVersion, fetchOPGGChampionAnalysis, fetchOPGGChampionBuilds, fetchChampionPatchNotes, fetchSPChampionBuilds } from "@/api/client";
+import type { ChampionSoulPoint, SoulPointBuild } from "@/api/types";
 import { winRateColor } from "@/lib/utils";
 import { RoleIcon } from "@/components/common/RoleIcon";
 
 // ── DDragon version ────────────────────────────────────────────
 function useVersion() {
-  const [v, setV] = useState("15.1.1");
+  const [v, setV] = useState("26.13.1");
   useEffect(() => { getDragonVersion().then(setV).catch(() => {}); }, []);
   return v;
 }
@@ -175,6 +176,66 @@ function useOPGGMultipleBuilds(champName: string, position: string) {
     return () => { cancelled = true; };
   }, [champName, position, key]);
   return { builds, loading };
+}
+
+// ── Soul Point (crawler) build hook ───────────────────────────
+const _spCache: Record<string, ChampionSoulPoint | null> = {};
+
+function useSPBuilds(champId: string): { data: ChampionSoulPoint | null; loading: boolean } {
+  const [data, setData] = useState<ChampionSoulPoint | null>(_spCache[champId] ?? null);
+  const [loading, setLoading] = useState(!Object.prototype.hasOwnProperty.call(_spCache, champId));
+  useEffect(() => {
+    if (Object.prototype.hasOwnProperty.call(_spCache, champId)) {
+      setData(_spCache[champId]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetchSPChampionBuilds(champId)
+      .then(d => { if (!cancelled) { _spCache[champId] = d; setData(d); } })
+      .catch(() => { if (!cancelled) { _spCache[champId] = null; setData(null); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [champId]);
+  return { data, loading };
+}
+
+function spBuildToEntry(
+  sp: SoulPointBuild,
+  template: BuildEntry,
+  paths: RunePath[],
+): BuildEntry {
+  const runeNameMap = new Map<number, string>();
+  for (const path of paths)
+    for (const slot of path.slots)
+      for (const rune of slot.runes)
+        runeNameMap.set(rune.id, rune.name);
+
+  const primaryPath   = paths.find(p => p.id === sp.primaryPath);
+  const secondaryPath = paths.find(p => p.id === sp.secondaryPath);
+  const keystoneName  = runeNameMap.get(sp.keystoneId) ?? sp.keystoneName;
+
+  // runes array: keystone + 3 primary non-keystones + 2 secondary
+  const primaryRunes   = sp.runes.slice(0, 4).map(id => runeNameMap.get(id) ?? String(id));
+  const secondaryRunes = sp.runes.slice(4, 6).map(id => runeNameMap.get(id) ?? String(id));
+
+  return {
+    ...template,
+    buildName:  sp.label,
+    buildDesc:  `Live match data · ${Math.round(sp.winRate * 100)}% WR · ${sp.games}g`,
+    winRate:    parseFloat((sp.winRate * 100).toFixed(1)),
+    pickRate:   parseFloat((sp.pickRate * 100).toFixed(1)),
+    games:      sp.games,
+    items:      sp.coreItems.map(id => ({ id, name: `Item ${id}` })),
+    runes: {
+      keystone:       keystoneName,
+      primary:        primaryPath?.name ?? sp.primaryPathName,
+      secondary:      secondaryPath?.name ?? sp.secondaryPathName,
+      primaryRunes,
+      secondaryRunes,
+    },
+  };
 }
 
 function mergeOPGGBuild(
@@ -1362,24 +1423,41 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
   const staticBase     = useMemo(() => allBuilds[0] ?? allBuilds.find(b => b.rank === rankKey), [allBuilds, rankKey]);
 
   const { builds: opggMultiBuilds } = useOPGGMultipleBuilds(champion.name, champion.primaryRole);
+  const { data: spData }            = useSPBuilds(champion.id);
   const { paths } = useRuneData();
 
-  // Merge each OP.GG build with the static base template
+  // Build the variant list: SP crawl data first (real match data), then OP.GG, then static
   const buildsForRank = useMemo((): BuildEntry[] => {
     if (!staticBase) return [];
-    if (opggMultiBuilds.length > 0) {
-      return opggMultiBuilds.map(ob => {
-        const merged = mergeOPGGBuild(ob.parsed, staticBase, paths);
-        merged.buildName = ob.label;
-        merged.buildDesc = `OP.GG Live · ${ob.tier}`;
-        merged.rank = rankKey;
-        merged.rankLabel = ob.label;
-        return merged;
+
+    const result: BuildEntry[] = [];
+
+    // 1. Live match crawl builds (highest priority — real 26.x game data)
+    if (spData && spData.builds.length > 0) {
+      spData.builds.forEach(sp => {
+        result.push(spBuildToEntry(sp, staticBase, paths));
       });
     }
-    // Fallback: static builds filtered by rankKey
-    return allBuilds.filter(b => b.rank === rankKey);
-  }, [opggMultiBuilds, staticBase, paths, allBuilds, rankKey]);
+
+    // 2. OP.GG live builds (fill in if SP data is absent or to supplement)
+    if (opggMultiBuilds.length > 0) {
+      opggMultiBuilds.forEach(ob => {
+        const merged = mergeOPGGBuild(ob.parsed, staticBase, paths);
+        merged.buildName  = ob.label;
+        merged.buildDesc  = `OP.GG · ${ob.tier}`;
+        merged.rank       = rankKey;
+        merged.rankLabel  = ob.label;
+        result.push(merged);
+      });
+    }
+
+    // 3. Static fallback only when both live sources are empty
+    if (result.length === 0) {
+      return allBuilds.filter(b => b.rank === rankKey);
+    }
+
+    return result;
+  }, [spData, opggMultiBuilds, staticBase, paths, allBuilds, rankKey]);
 
   const build = useMemo(() => {
     return buildsForRank[buildVariantIdx] ?? buildsForRank[0] ?? null;
@@ -1516,7 +1594,13 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
               <div className={`${card} overflow-hidden`}>
                 <div className="px-5 pt-4 pb-2 flex items-center gap-3">
                   <span className={sectionLabel} style={{ marginBottom: 0 }}>Build Options</span>
-                  {opggMultiBuilds.length > 0 && (
+                  {spData && spData.builds.length > 0 && (
+                    <span className="text-[9px] font-['Cinzel'] tracking-widest border px-2 py-0.5"
+                      style={{ color: "#C89B3C", borderColor: "#C89B3C33", background: "#C89B3C08" }}>
+                      LIVE MATCH DATA
+                    </span>
+                  )}
+                  {opggMultiBuilds.length > 0 && !(spData && spData.builds.length > 0) && (
                     <span className="text-[9px] font-['Cinzel'] tracking-widest border px-2 py-0.5"
                       style={{ color: "#0AC8B9", borderColor: "#0AC8B933", background: "#0AC8B908" }}>
                       OP.GG LIVE

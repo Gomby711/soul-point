@@ -467,11 +467,23 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`\n  ⚔  Soul Point API — http://localhost:${PORT}`);
   if (!KEY) {
     console.log("  ⚠️  RIOT_API_KEY not set. Add it to server/.env to enable live data.\n");
   } else {
     console.log("  ✓  Riot API key configured\n");
+    // Auto-start crawl on startup if no build data exists yet
+    try {
+      const existingBuilds = await getAllBuilds();
+      if (existingBuilds.length === 0) {
+        console.log("  📊  No build data found — auto-starting match crawl (NA, 50 players)...");
+        await startCrawl({ apiKey: KEY, region: "NA", playerCount: 50, matchesPerPlayer: 10 });
+      } else {
+        console.log(`  ✓  Build data loaded: ${existingBuilds.length} champions covered\n`);
+      }
+    } catch (e) {
+      console.error("  ⚠️  Auto-crawl init failed:", (e as Error).message);
+    }
   }
 });
