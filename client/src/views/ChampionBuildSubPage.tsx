@@ -89,7 +89,7 @@ function padOrder(order: string[]): string[] {
 
 // ── OP.GG module-level cache ───────────────────────────────────
 const _opggCache: Record<string, OPGGParsed> = {};
-const _opggInflight: Record<string, Promise<OPGGParsed | null>> = {};
+const _opggInflight: Record<string, Promise<OPGGParsed | null> | undefined> = {};
 
 function opggKey(champName: string, position: string, rankKey: string) {
   return `${champName}::${position}::${rankKey}`;
@@ -97,7 +97,7 @@ function opggKey(champName: string, position: string, rankKey: string) {
 
 function fetchAndCache(champName: string, position: string, rankKey: string): Promise<OPGGParsed | null> {
   const key = opggKey(champName, position, rankKey);
-  if (_opggInflight[key]) return _opggInflight[key];
+  if (_opggInflight[key]) return _opggInflight[key]!;
   const p = fetchOPGGChampionAnalysis(champName, position, rankKey)
     .then(raw => {
       const r = raw as OPGGParsed;
@@ -141,11 +141,11 @@ function useOPGGBuild(champName: string, position: string, rankKey: string) {
 // ── OP.GG multi-build cache ────────────────────────────────────
 interface OPGGMultiBuildEntry { tier: string; label: string; parsed: OPGGParsed }
 const _multiCache: Record<string, OPGGMultiBuildEntry[]> = {};
-const _multiInflight: Record<string, Promise<OPGGMultiBuildEntry[]>> = {};
+const _multiInflight: Record<string, Promise<OPGGMultiBuildEntry[]> | undefined> = {};
 
 function fetchMultiBuilds(champName: string, position: string): Promise<OPGGMultiBuildEntry[]> {
   const key = `${champName}::${position}`;
-  if (_multiInflight[key]) return _multiInflight[key];
+  if (_multiInflight[key]) return _multiInflight[key]!;
   const p = fetchOPGGChampionBuilds(champName, position)
     .then(res =>
       res.builds
@@ -1080,8 +1080,8 @@ function PatchNotesTab({ champName, card, sectionLabel }: {
             Could not load patch notes: {error}
           </div>
         )}
-        {!loading && !error && notes && (
-          <PatchNoteDisplay data={notes} champName={champName} />
+        {!loading && !error && (
+          notes ? <PatchNoteDisplay data={notes} champName={champName} /> : null
         )}
       </div>
     </div>
