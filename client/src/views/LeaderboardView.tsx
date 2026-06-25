@@ -192,9 +192,9 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                 <div className="font-['Cinzel'] font-black text-3xl mb-2" style={{ color: col }}>
                   {["②", "①", "③"][podiumIdx]}
                 </div>
-                <div className={`mx-auto mb-2 ${isFirst ? "w-16 h-16" : "w-12 h-12"}`}
+                <div className={`mx-auto mb-2 ${isFirst ? "w-28 h-28" : "w-24 h-24"}`}
                   style={{ filter: `drop-shadow(0 0 6px ${col}66)` }}>
-                  <RankEmblem tier={player.tier} size={isFirst ? 64 : 48} />
+                  <RankEmblem tier={player.tier} size={isFirst ? 112 : 96} />
                 </div>
                 <div className="font-['Cinzel'] font-bold text-xs text-[#C8AA6E] truncate">{player.summonerName}</div>
                 <div className="font-mono text-xs mt-1 font-bold" style={{ color: col }}>
@@ -279,7 +279,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       {/* Summoner */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <RankEmblem tier={e.tier} size={40} />
+                          <RankEmblem tier={e.tier} size={80} />
                           <span className="font-['Cinzel'] text-[#C8AA6E] group-hover:text-[#F0E6BE] transition-colors truncate max-w-[160px]">
                             {e.summonerName}
                           </span>
