@@ -14,6 +14,7 @@ const LINKS: { id: View; label: string; Icon: React.ElementType }[] = [
   { id: "leaderboard", label: "Leaderboard", Icon: Crown },
   { id: "tierlist",    label: "Tier List",   Icon: BarChart2 },
   { id: "patch",       label: "Patch",       Icon: Map },
+  { id: "soulpoint",   label: "Soul Point",  Icon: Zap },
 ];
 
 export function NavBar({ view, setView }: NavBarProps) {

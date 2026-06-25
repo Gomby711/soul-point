@@ -7,9 +7,10 @@ import { ChampionsView } from "@/views/ChampionsView";
 import { LeaderboardView } from "@/views/LeaderboardView";
 import { TierListView } from "@/views/TierListView";
 import { PatchView } from "@/views/PatchView";
+import { SoulPointView } from "@/views/SoulPointView";
 import type { Region } from "@/api/types";
 
-export type View = "home" | "profile" | "champions" | "leaderboard" | "tierlist" | "patch";
+export type View = "home" | "profile" | "champions" | "leaderboard" | "tierlist" | "patch" | "soulpoint";
 
 interface ProfileParams {
   gameName: string;
@@ -61,6 +62,7 @@ export default function App() {
         {view === "leaderboard" && <LeaderboardView onSearch={handleSearch} />}
         {view === "tierlist" && <TierListView />}
         {view === "patch" && <PatchView />}
+        {view === "soulpoint" && <SoulPointView />}
       </main>
       <Footer />
     </div>

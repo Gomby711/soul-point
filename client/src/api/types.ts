@@ -185,6 +185,51 @@ export interface DragonItem {
   stats: Record<string, number>;
 }
 
+// ── Soul Point Algorithm types ───────────────────────────────
+
+export interface SoulPointBuild {
+  rank: number;
+  label: string;
+  coreItems: number[];
+  keystoneId: number;
+  keystoneName: string;
+  primaryPath: number;
+  primaryPathName: string;
+  primaryPathColor: string;
+  secondaryPath: number;
+  secondaryPathName: string;
+  secondaryPathColor: string;
+  runes: number[];
+  wins: number;
+  losses: number;
+  games: number;
+  winRate: number;
+  pickRate: number;
+  soulPointScore: number;
+}
+
+export interface ChampionSoulPoint {
+  champion: string;
+  totalGames: number;
+  builds: SoulPointBuild[];
+  lastUpdated: number;
+}
+
+export interface CrawlStatus {
+  state: "idle" | "running" | "done" | "error";
+  progress: number;
+  totalPlayers: number;
+  processedPlayers: number;
+  totalMatches: number;
+  processedMatches: number;
+  champsCovered: number;
+  matchesInDB: number;
+  message: string;
+  startedAt: number | null;
+  completedAt: number | null;
+  region: string;
+}
+
 // ── App-level types ──────────────────────────────────────────
 
 export type Region = "NA" | "EUW" | "EUNE" | "KR" | "BR" | "LAN" | "LAS" | "OCE" | "TR" | "RU" | "JP";

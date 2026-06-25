@@ -10,6 +10,8 @@ import {
   getChampionStats, getChampionAbilities, getChampionPatchNote,
   getItemData, getItemPatchNote, getRuneData, getRunePatchNote,
 } from "./lol-data-mcp.js";
+import { startCrawl, getCrawlStatus } from "./crawler.js";
+import { getChampionBuilds, getAllBuilds, getChampionList } from "./algo.js";
 
 const app  = express();
 const PORT = process.env.PORT ?? 3001;
@@ -400,6 +402,49 @@ app.get("/api/analytics/build/:name/:position", cached(300), async (req, res) =>
     const { tier } = req.query as Record<string, string>;
     const data = await fetchChampionAnalysis(name, position, tier ?? "EMERALD");
     res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── Soul Point Crawler ────────────────────────────────────────
+
+app.post("/api/sp/crawl/start", async (req, res) => {
+  if (!requireKey(res)) return;
+  try {
+    const { region = "NA", playerCount = 50, matchesPerPlayer = 10 } = req.body as Record<string, unknown>;
+    await startCrawl({
+      apiKey: KEY,
+      region: String(region),
+      playerCount: Number(playerCount),
+      matchesPerPlayer: Number(matchesPerPlayer),
+    });
+    res.json({ ok: true, message: "Crawl started." });
+  } catch (e) { handleError(e, res); }
+});
+
+app.get("/api/sp/crawl/status", (_, res) => {
+  res.json(getCrawlStatus());
+});
+
+app.get("/api/sp/champions", async (_req, res) => {
+  try {
+    const list = await getChampionList();
+    res.json(list);
+  } catch (e) { handleError(e, res); }
+});
+
+app.get("/api/sp/builds/:champion", async (req, res) => {
+  try {
+    const { champion } = req.params as Record<string, string>;
+    const builds = await getChampionBuilds(champion);
+    if (!builds) return void res.status(404).json({ message: "No data for this champion yet." });
+    res.json(builds);
+  } catch (e) { handleError(e, res); }
+});
+
+app.get("/api/sp/builds", cached(300), async (_req, res) => {
+  try {
+    const all = await getAllBuilds();
+    res.json(all);
   } catch (e) { handleError(e, res); }
 });
 

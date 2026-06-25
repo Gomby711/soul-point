@@ -2,7 +2,10 @@ import type {
   RiotAccount, Summoner, LeagueEntry, Match,
   ChampionMastery, ChallengeData, TFTLeagueEntry,
   DragonChampion, DragonItem, Region,
+  SoulPointBuild, ChampionSoulPoint, CrawlStatus,
 } from "./types";
+
+export type { SoulPointBuild, ChampionSoulPoint, CrawlStatus };
 
 const BASE = "/api";
 
@@ -210,6 +213,36 @@ export async function fetchOPGGMetaChampions(
   if (rankKey) params.set("tier", rankKey);
   const qs = params.toString();
   return get(`/opgg/meta/${encodeURIComponent(position)}${qs ? `?${qs}` : ""}`);
+}
+
+// ── Soul Point Algorithm ─────────────────────────────────────
+
+export function fetchCrawlStatus(): Promise<CrawlStatus> {
+  return get("/sp/crawl/status");
+}
+
+export function startCrawl(opts: {
+  region?: string;
+  playerCount?: number;
+  matchesPerPlayer?: number;
+}): Promise<{ ok: boolean; message: string }> {
+  return fetch("/api/sp/crawl/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  }).then(r => r.json());
+}
+
+export function fetchSPChampions(): Promise<string[]> {
+  return get("/sp/champions");
+}
+
+export function fetchSPChampionBuilds(champion: string): Promise<ChampionSoulPoint> {
+  return get(`/sp/builds/${encodeURIComponent(champion)}`);
+}
+
+export function fetchSPAllBuilds(): Promise<ChampionSoulPoint[]> {
+  return get("/sp/builds");
 }
 
 // ── Champion meta stats ──────────────────────────────────────
