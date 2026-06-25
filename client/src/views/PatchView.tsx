@@ -91,12 +91,15 @@ function classifyOverall(changes: StatChange[]): ChangeType {
   return "adjust";
 }
 
+// DDragon uses internal season numbering (e.g. 16.x) while game shows 26.x
+function ddragonToDisplayMajor(ddragonMajor: number): number {
+  return ddragonMajor >= 15 ? ddragonMajor + 10 : ddragonMajor;
+}
+
 function patchDate(version: string): string {
   const [major, minor] = version.split(".").map(Number);
-  // Season 1 = 2011, so year = 2010 + major
-  const year = 2010 + major;
-  // Patches are ~biweekly. Patch 1 ≈ Jan 8 of that year, each +14 days
-  const base = new Date(year, 0, 8); // Jan 8
+  const year = 2010 + major; // ddragon major 16 → 2026
+  const base = new Date(year, 0, 8);
   base.setDate(base.getDate() + (minor - 1) * 14);
   return base.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
@@ -238,7 +241,9 @@ export function PatchView() {
     load();
   }, []);
 
-  const patchLabel = currentVer.split(".").slice(0, 2).join(".");
+  const ddragonMajor = parseInt(currentVer.split(".")[0] || "16", 10);
+  const displayMajor = ddragonToDisplayMajor(ddragonMajor);
+  const patchLabel   = `${displayMajor}.${currentVer.split(".")[1] ?? "13"}`;
 
   if (loading) {
     return (
@@ -283,7 +288,7 @@ export function PatchView() {
           <div className="w-px h-10 bg-[#1E2D3D]" />
           <div>
             <div className="text-[9px] font-['Cinzel'] tracking-widest text-[#785A28] uppercase mb-1">Compared To</div>
-            <div className="font-['Cinzel'] font-bold text-xl text-[#5B7A8C]">{previousVer.split(".").slice(0,2).join(".")}</div>
+            <div className="font-['Cinzel'] font-bold text-xl text-[#5B7A8C]">{`${ddragonToDisplayMajor(parseInt(previousVer.split(".")[0]||"16",10))}.${previousVer.split(".")[1]??""}`}</div>
           </div>
           <div className="w-px h-10 bg-[#1E2D3D]" />
           <div>
@@ -306,7 +311,7 @@ export function PatchView() {
         <OrnatePanel className="p-12 text-center">
           <div className="font-['Cinzel'] text-[#C8AA6E] text-sm mb-2">No Base Stat Changes Detected</div>
           <div className="text-[#5B7A8C] text-xs max-w-md mx-auto">
-            Patches {previousVer.split(".").slice(0,2).join(".")} and {patchLabel} have identical
+            Patches {`${ddragonToDisplayMajor(parseInt(previousVer.split(".")[0]||"16",10))}.${previousVer.split(".")[1]??""}`} and {patchLabel} have identical
             base champion and item stats in DDragon. Riot may have only made ability-level or
             system changes not reflected in the data files.
           </div>

@@ -22,13 +22,14 @@ export function NavBar({ view, setView }: NavBarProps) {
   const [season, setSeason] = useState("...");
   useEffect(() => {
     getDragonVersion().then(v => {
-      // v is like "16.13.1" — major = season number
+      // DDragon uses internal season numbering (e.g. 16.13.1) while the game
+      // shows year-based patch numbers (26.13). For DDragon major >= 15, add 10.
       const parts = v.split(".");
-      const patchStr = parts.slice(0, 2).join(".");
-      const seasonNum = parseInt(parts[0], 10);
-      const year = 2000 + seasonNum;
-      setPatch(patchStr);
-      setSeason(`S${seasonNum} · ${year}`);
+      const ddragonMajor = parseInt(parts[0], 10);
+      const displayMajor = ddragonMajor >= 15 ? ddragonMajor + 10 : ddragonMajor;
+      const year = 2010 + ddragonMajor;
+      setPatch(`${displayMajor}.${parts[1]}`);
+      setSeason(`S${displayMajor} · ${year}`);
     }).catch(() => { setPatch("26.13"); setSeason("S26 · 2026"); });
   }, []);
 

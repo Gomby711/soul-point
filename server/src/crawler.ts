@@ -32,6 +32,7 @@ export interface CrawlStatus {
   totalMatches: number;
   processedMatches: number;
   champsCovered: number;
+  champsAtTarget: number;
   matchesInDB: number;
   message: string;
   startedAt: number | null;
@@ -39,6 +40,8 @@ export interface CrawlStatus {
   region: string;
   regionsQueued: string[];
 }
+
+const MIN_GAMES_PER_CHAMP = 20; // target games per champion for accurate builds
 
 let crawlStatus: CrawlStatus = {
   state: "idle",
@@ -48,6 +51,7 @@ let crawlStatus: CrawlStatus = {
   totalMatches: 0,
   processedMatches: 0,
   champsCovered: 0,
+  champsAtTarget: 0,
   matchesInDB: 0,
   message: "No crawl has been started yet.",
   startedAt: null,
@@ -196,6 +200,7 @@ export async function startCrawl(opts: {
     totalMatches: 0,
     processedMatches: 0,
     champsCovered: 0,
+    champsAtTarget: 0,
     matchesInDB: 0,
     message: `Starting crawl for ${region}...`,
     startedAt: Date.now(),
@@ -362,6 +367,81 @@ async function runCrawl(opts: CrawlJob) {
     }
   }
 
+  // ── Phase 4: Coverage boost — pull Diamond players for underrepresented champs ──
+  const underCount = Object.values(stats).filter(builds => {
+    const total = Object.values(builds).reduce((s, b) => s + b.wins + b.losses, 0);
+    return total < MIN_GAMES_PER_CHAMP;
+  }).length;
+
+  if (underCount > 0) {
+    crawlStatus.message = `[${region}] Coverage boost: ${underCount} champions below ${MIN_GAMES_PER_CHAMP}-game target...`;
+
+    const extraPuuids: string[] = [];
+    for (const div of ["I", "II", "III", "IV"] as const) {
+      if (extraPuuids.length >= 100) break;
+      try {
+        const url = `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/${div}?page=1`;
+        const entries = await throttle(url, apiKey) as Array<{ puuid?: string }>;
+        for (const e of entries) {
+          if (e.puuid && !puuids.includes(e.puuid) && extraPuuids.length < 100) {
+            extraPuuids.push(e.puuid);
+          }
+        }
+      } catch (e) {
+        console.error(`[Crawler] [${region}] Diamond ${div} fetch failed:`, (e as Error).message);
+      }
+    }
+
+    const extraMatchIds: string[] = [];
+    for (const puuid of extraPuuids) {
+      try {
+        const url = `${regUrl}/lol/match/v5/matches/by-puuid/${puuid}/ids?count=10&queue=420`;
+        const ids = await throttle(url, apiKey) as string[];
+        for (const id of ids) {
+          if (!crawled.has(id) && !allMatchIds.includes(id) && !extraMatchIds.includes(id)) {
+            extraMatchIds.push(id);
+          }
+        }
+      } catch { /* skip */ }
+    }
+
+    for (let i = 0; i < Math.min(extraMatchIds.length, 500); i++) {
+      crawlStatus.message = `[${region}] Coverage boost: match ${i + 1}/${Math.min(extraMatchIds.length, 500)}...`;
+      try {
+        const url = `${regUrl}/lol/match/v5/matches/${extraMatchIds[i]}`;
+        const match = await throttle(url, apiKey) as {
+          info: { participants: Array<{
+            championName: string; win: boolean;
+            item0: number; item1: number; item2: number;
+            item3: number; item4: number; item5: number; item6: number;
+            perks?: { styles: Array<{ style: number; selections: Array<{ perk: number }> }> };
+          }> };
+        };
+        for (const p of match.info.participants) {
+          const coreItems = getCoreItems(p.item0, p.item1, p.item2, p.item3, p.item4, p.item5);
+          if (coreItems.length < 2) continue;
+          const primary = p.perks?.styles?.[0];
+          const secondary = p.perks?.styles?.[1];
+          if (!primary || !secondary) continue;
+          const keystoneId = primary.selections[0]?.perk ?? 0;
+          if (!keystoneId) continue;
+          const runes = [...primary.selections.map(s => s.perk), ...secondary.selections.map(s => s.perk)];
+          if (!stats[p.championName]) stats[p.championName] = {};
+          const key = makeBuildKey(keystoneId, primary.style, secondary.style, coreItems);
+          if (!stats[p.championName][key]) {
+            stats[p.championName][key] = { wins: 0, losses: 0, keystoneId, primaryPath: primary.style, secondaryPath: secondary.style, coreItems, runes };
+          }
+          if (p.win) stats[p.championName][key].wins++;
+          else stats[p.championName][key].losses++;
+        }
+        crawled.add(extraMatchIds[i]);
+      } catch { /* skip */ }
+    }
+
+    await saveBuildStats(stats);
+    await saveCrawledMatches(crawled);
+  }
+
   // Final save
   await saveBuildStats(stats);
   await saveCrawledMatches(crawled);
@@ -369,15 +449,21 @@ async function runCrawl(opts: CrawlJob) {
   const nextQueue = crawlQueue.map(j => j.region);
   const isDone = nextQueue.length === 0;
 
+  const atTarget = Object.values(stats).filter(builds => {
+    const total = Object.values(builds).reduce((s, b) => s + b.wins + b.losses, 0);
+    return total >= MIN_GAMES_PER_CHAMP;
+  }).length;
+
   crawlStatus = {
     ...crawlStatus,
     state: isDone ? "done" : "idle",
     progress: isDone ? 100 : 0,
     champsCovered: Object.keys(stats).length,
+    champsAtTarget: atTarget,
     matchesInDB: crawled.size,
     completedAt: isDone ? Date.now() : null,
     message: isDone
-      ? `Done! Processed ${allMatchIds.length} new matches across ${Object.keys(stats).length} champions.`
+      ? `Done! ${Object.keys(stats).length} champs covered, ${atTarget} at ${MIN_GAMES_PER_CHAMP}+ games target.`
       : `[${region}] complete — ${allMatchIds.length} matches. Starting ${nextQueue[0]}...`,
     regionsQueued: nextQueue,
   };

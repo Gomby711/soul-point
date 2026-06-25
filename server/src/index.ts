@@ -510,9 +510,9 @@ if (process.env.NODE_ENV === "production") {
 }
 
 const CRAWL_REGIONS = ["NA", "KR", "EUW", "EUNE", "BR", "LAN", "LAS", "OCE", "TR", "RU", "JP"];
-const CRAWL_PLAYER_COUNT = 150;
-const CRAWL_MATCHES_PER = 15;
-const RECRAWL_INTERVAL_MS = 2.5 * 60 * 60 * 1000; // 2.5 hours
+const CRAWL_PLAYER_COUNT = 300;
+const CRAWL_MATCHES_PER = 20;
+const RECRAWL_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 async function autoStartCrawlIfNeeded() {
   if (!KEY) return;
