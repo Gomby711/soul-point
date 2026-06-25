@@ -8,6 +8,7 @@ import type { Region } from "@/api/types";
 
 interface HomeViewProps {
   onSearch: (name: string, tag: string, region: Region) => void;
+  onSelectChampion: (id: string) => void;
 }
 
 const RECENT_SEARCHES = [
@@ -17,28 +18,28 @@ const RECENT_SEARCHES = [
 ];
 
 const HOT_PICKS = [
-  { name: "Ahri",    role: "Mid",     winRate: 53.4, pickRate: 18.2, tier: "S+", trend: "up"   },
-  { name: "Jinx",    role: "ADC",     winRate: 52.1, pickRate: 14.7, tier: "S",  trend: "up"   },
-  { name: "Thresh",  role: "Support", winRate: 51.8, pickRate: 22.4, tier: "S",  trend: "up"   },
-  { name: "Yasuo",   role: "Mid",     winRate: 49.2, pickRate: 11.3, tier: "A+", trend: "down" },
-  { name: "Lee Sin", role: "Jungle",  winRate: 48.9, pickRate: 16.8, tier: "A",  trend: "down" },
-  { name: "Darius",  role: "Top",     winRate: 52.7, pickRate: 13.1, tier: "S",  trend: "up"   },
+  { name: "Ahri",    id: "Ahri",    role: "Mid",     winRate: 53.4, pickRate: 18.2, tier: "S+", trend: "up"   },
+  { name: "Jinx",    id: "Jinx",    role: "ADC",     winRate: 52.1, pickRate: 14.7, tier: "S",  trend: "up"   },
+  { name: "Thresh",  id: "Thresh",  role: "Support", winRate: 51.8, pickRate: 22.4, tier: "S",  trend: "up"   },
+  { name: "Yasuo",   id: "Yasuo",   role: "Mid",     winRate: 49.2, pickRate: 11.3, tier: "A+", trend: "down" },
+  { name: "Lee Sin", id: "LeeSin",  role: "Jungle",  winRate: 48.9, pickRate: 16.8, tier: "A",  trend: "down" },
+  { name: "Darius",  id: "Darius",  role: "Top",     winRate: 52.7, pickRate: 13.1, tier: "S",  trend: "up"   },
 ];
 
 const TOP_CHALLENGERS = [
-  { name: "Faker",    tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1847, champ: "Ahri"   },
-  { name: "Caps",     tag: "G2",  region: "EUW", tier: "CHALLENGER",  lp: 1623, champ: "Zed"    },
-  { name: "Ruler",    tag: "JDG", region: "KR",  tier: "CHALLENGER",  lp: 1591, champ: "Jinx"   },
-  { name: "Zeus",     tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1544, champ: "Irelia" },
-  { name: "BeryL",    tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1511, champ: "Thresh" },
-  { name: "Inspired", tag: "EG",  region: "NA",  tier: "GRANDMASTER", lp: 1198, champ: "Lee Sin"},
+  { name: "Faker",    tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1847, champ: "Ahri",    champId: "Ahri"    },
+  { name: "Caps",     tag: "G2",  region: "EUW", tier: "CHALLENGER",  lp: 1623, champ: "Zed",     champId: "Zed"     },
+  { name: "Ruler",    tag: "JDG", region: "KR",  tier: "CHALLENGER",  lp: 1591, champ: "Jinx",    champId: "Jinx"    },
+  { name: "Zeus",     tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1544, champ: "Irelia",  champId: "Irelia"  },
+  { name: "BeryL",    tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1511, champ: "Thresh",  champId: "Thresh"  },
+  { name: "Inspired", tag: "EG",  region: "NA",  tier: "GRANDMASTER", lp: 1198, champ: "Lee Sin", champId: "LeeSin"  },
 ];
 
 const TIER_COLORS: Record<string, string> = {
   "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C",
 };
 
-export function HomeView({ onSearch }: HomeViewProps) {
+export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
   return (
     <div className="min-h-[calc(100vh-49px)]">
       {/* ── Hero ── */}
@@ -125,7 +126,7 @@ export function HomeView({ onSearch }: HomeViewProps) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {HOT_PICKS.map(c => (
-              <OrnatePanel key={c.name} className="p-3 hover:border-[#785A28] transition-colors cursor-pointer">
+              <OrnatePanel key={c.name} className="p-3 hover:border-[#785A28] transition-colors cursor-pointer" onClick={() => onSelectChampion(c.id)}>
                 <div className="flex items-center gap-3">
                   <ChampPortrait championName={c.name} size={48} ring />
                   <div className="flex-1 min-w-0">
@@ -175,7 +176,13 @@ export function HomeView({ onSearch }: HomeViewProps) {
                 >
                   {i < 3 ? ["①", "②", "③"][i] : i + 1}
                 </span>
-                <ChampPortrait championName={p.champ} size={28} />
+                <button
+                  className="shrink-0"
+                  title={`View ${p.champ} build`}
+                  onClick={e => { e.stopPropagation(); onSelectChampion(p.champId); }}
+                >
+                  <ChampPortrait championName={p.champ} size={28} />
+                </button>
                 <div className="flex-1 min-w-0">
                   <div className="font-['Cinzel'] text-xs text-[#C8AA6E] truncate">{p.name}</div>
                   <div className="text-[10px] text-[#5B7A8C]">{p.region} · {p.lp.toLocaleString()} LP</div>

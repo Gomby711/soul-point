@@ -7,9 +7,10 @@ import { ChampionsView } from "@/views/ChampionsView";
 import { LeaderboardView } from "@/views/LeaderboardView";
 import { TierListView } from "@/views/TierListView";
 import { PatchView } from "@/views/PatchView";
+import { AnalyticsView } from "@/views/AnalyticsView";
 import type { Region } from "@/api/types";
 
-export type View = "home" | "profile" | "champions" | "leaderboard" | "tierlist" | "patch";
+export type View = "home" | "profile" | "champions" | "leaderboard" | "tierlist" | "patch" | "analytics";
 
 interface ProfileParams {
   gameName: string;
@@ -42,7 +43,7 @@ export default function App() {
       <NavBar view={view} setView={handleSetView} />
       <main className="flex-1">
         {view === "home" && (
-          <HomeView onSearch={handleSearch} />
+          <HomeView onSearch={handleSearch} onSelectChampion={handleSelectChampion} />
         )}
         {view === "profile" && profileParams && (
           <ProfileView
@@ -61,6 +62,7 @@ export default function App() {
         {view === "leaderboard" && <LeaderboardView onSearch={handleSearch} />}
         {view === "tierlist" && <TierListView />}
         {view === "patch" && <PatchView />}
+        {view === "analytics" && <AnalyticsView onSelectChampion={handleSelectChampion} />}
       </main>
       <Footer />
     </div>

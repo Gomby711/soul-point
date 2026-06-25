@@ -4,6 +4,10 @@ import cors from "cors";
 import NodeCache from "node-cache";
 import { platformUrl, regionalUrl, riotFetch } from "./riot.js";
 import { fetchChampionAnalysis, fetchLaneMetaChampions, fetchChampionSynergies } from "./opgg.js";
+import {
+  getChampionStats, getChampionAbilities, getChampionPatchNote,
+  getItemData, getItemPatchNote, getRuneData, getRunePatchNote,
+} from "./lol-data-mcp.js";
 
 const app  = express();
 const PORT = process.env.PORT ?? 3001;
@@ -181,6 +185,60 @@ app.get("/api/tft/matches/:region/match/:matchId", cached(3600), async (req, res
   } catch (e) { handleError(e, res); }
 });
 
+// ── Champion meta stats (all roles aggregated from OP.GG) ─────
+const OPGG_POSITIONS = [
+  { label: "Top",     key: "top"     },
+  { label: "Jungle",  key: "jungle"  },
+  { label: "Mid",     key: "mid"     },
+  { label: "ADC",     key: "adc"     },
+  { label: "Support", key: "support" },
+] as const;
+
+const OPGG_TIER_LABEL: Record<number, string> = { 1: "S+", 2: "S", 3: "A+", 4: "A", 5: "B" };
+
+interface ChampMeta {
+  winRate: number; pickRate: number; banRate: number;
+  tier: string; games: number; kda: number; rank: number; position: string;
+}
+
+app.get("/api/champion-meta", cached(3600), async (_req, res) => {
+  try {
+    const results = await Promise.all(
+      OPGG_POSITIONS.map(p => fetchLaneMetaChampions(p.label, "EMERALD").catch(() => null))
+    );
+
+    const statsMap: Record<string, ChampMeta> = {};
+
+    for (let i = 0; i < OPGG_POSITIONS.length; i++) {
+      const pos = OPGG_POSITIONS[i];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const entries: any[] = (results[i] as any)?.data?.positions?.[pos.key] ?? [];
+      if (!Array.isArray(entries)) continue;
+
+      for (const e of entries) {
+        if (!e?.champion) continue;
+        const name = e.champion as string;
+        const existing = statsMap[name];
+        const pickRate = +((e.pick_rate ?? 0) * 100).toFixed(2);
+        if (!existing || pickRate > existing.pickRate) {
+          statsMap[name] = {
+            winRate:  +((e.win_rate  ?? 0.5)  * 100).toFixed(2),
+            pickRate,
+            banRate:  +((e.ban_rate  ?? 0.02) * 100).toFixed(2),
+            tier:     OPGG_TIER_LABEL[e.tier as number] ?? "C",
+            games:    e.play  ?? 0,
+            kda:      +((e.kda ?? 2.0) as number).toFixed(2),
+            rank:     e.rank  ?? 99,
+            position: pos.label,
+          };
+        }
+      }
+    }
+
+    res.json(statsMap);
+  } catch (e) { handleError(e, res); }
+});
+
 // ── OP.GG MCP proxy routes ────────────────────────────────────
 
 app.get("/api/opgg/champion/:name/:position", cached(300), async (req, res) => {
@@ -205,6 +263,112 @@ app.get("/api/opgg/synergies/:name/:position", cached(600), async (req, res) => 
   try {
     const { name, position } = req.params as Record<string, string>;
     const data = await fetchChampionSynergies(name, position);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── LoL Data MCP: Champion stats ─────────────────────────────
+app.get("/api/lol/champion/:name/stats", cached(3600), async (req, res) => {
+  try {
+    const { name } = req.params as Record<string, string>;
+    const level = req.query.level ? parseInt(req.query.level as string) : undefined;
+    const data = await getChampionStats(name, level);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── LoL Data MCP: Champion abilities ─────────────────────────
+app.get("/api/lol/champion/:name/abilities", cached(3600), async (req, res) => {
+  try {
+    const { name } = req.params as Record<string, string>;
+    const slot = req.query.slot as string | undefined;
+    const data = await getChampionAbilities(name, slot);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── LoL Data MCP: Champion patch notes ───────────────────────
+app.get("/api/lol/champion/:name/patch-notes", cached(1800), async (req, res) => {
+  try {
+    const { name } = req.params as Record<string, string>;
+    const patch = req.query.patch as string | undefined;
+    const data = await getChampionPatchNote(name, patch);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── LoL Data MCP: Item data ───────────────────────────────────
+app.get("/api/lol/item/:name/data", cached(3600), async (req, res) => {
+  try {
+    const { name } = req.params as Record<string, string>;
+    const data = await getItemData(decodeURIComponent(name));
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── LoL Data MCP: Item patch notes ───────────────────────────
+app.get("/api/lol/item/:name/patch-notes", cached(1800), async (req, res) => {
+  try {
+    const { name } = req.params as Record<string, string>;
+    const patch = req.query.patch as string | undefined;
+    const data = await getItemPatchNote(decodeURIComponent(name), patch);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── LoL Data MCP: Rune data ───────────────────────────────────
+app.get("/api/lol/rune/:name/data", cached(3600), async (req, res) => {
+  try {
+    const { name } = req.params as Record<string, string>;
+    const data = await getRuneData(decodeURIComponent(name));
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── LoL Data MCP: Rune patch notes ───────────────────────────
+app.get("/api/lol/rune/:name/patch-notes", cached(1800), async (req, res) => {
+  try {
+    const { name } = req.params as Record<string, string>;
+    const patch = req.query.patch as string | undefined;
+    const data = await getRunePatchNote(decodeURIComponent(name), patch);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── Advanced analytics: full meta snapshot ────────────────────
+app.get("/api/analytics/meta", cached(3600), async (_req, res) => {
+  try {
+    const results = await Promise.all(
+      OPGG_POSITIONS.map(p =>
+        Promise.all([
+          fetchLaneMetaChampions(p.label, "EMERALD").catch(() => null),
+          fetchLaneMetaChampions(p.label, "DIAMOND").catch(() => null),
+          fetchLaneMetaChampions(p.label, "MASTER").catch(() => null),
+        ]).then(([emerald, diamond, master]) => ({
+          position: p.label,
+          emerald, diamond, master,
+        }))
+      )
+    );
+    res.json({ positions: results, generatedAt: Date.now() });
+  } catch (e) { handleError(e, res); }
+});
+
+// ── Advanced analytics: champion synergies ────────────────────
+app.get("/api/analytics/synergies/:name/:position", cached(600), async (req, res) => {
+  try {
+    const { name, position } = req.params as Record<string, string>;
+    const data = await fetchChampionSynergies(name, position);
+    res.json(data);
+  } catch (e) { handleError(e, res); }
+});
+
+// ── Advanced analytics: champion build recommendation ─────────
+app.get("/api/analytics/build/:name/:position", cached(300), async (req, res) => {
+  try {
+    const { name, position } = req.params as Record<string, string>;
+    const { tier } = req.query as Record<string, string>;
+    const data = await fetchChampionAnalysis(name, position, tier ?? "EMERALD");
     res.json(data);
   } catch (e) { handleError(e, res); }
 });

@@ -6,3 +6,64 @@
   ⚔  Soul Point API — http://localhost:3001
   ✓  Riot API key configured
 
+[API Error] MCP error -32603: Unknown champion provided.
+[90m3:13:00 PM[39m [96m[tsx][39m [95mchange[39m in [92m./src\opgg.ts[39m [33mRestarting...[39m
+c
+  ⚔  Soul Point API — http://localhost:3001
+  ✓  Riot API key configured
+
+[90m7:58:45 PM[39m [96m[tsx][39m [95mchange[39m in [92m./src\index.ts[39m [33mRerunning...[39m
+c
+  ⚔  Soul Point API — http://localhost:3001
+  ✓  Riot API key configured
+
+[90m8:17:51 PM[39m [96m[tsx][39m [95mchange[39m in [92m./src\index.ts[39m [33mRerunning...[39m
+cnode:events:487
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+[90m    at Server.setupListenHandle [as _listen2] (node:net:2008:16)[39m
+[90m    at listenInCluster (node:net:2065:12)[39m
+[90m    at Server.listen (node:net:2170:7)[39m
+    at app.listen [90m(D:\Git\soul-point\server\[39mnode_modules\[4mexpress[24m\lib\application.js:635:24[90m)[39m
+    at <anonymous> [90m(D:\Git\soul-point\server\[39msrc\index.ts:279:5[90m)[39m
+[90m    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)[39m
+    at async node:internal/modules/esm/loader:633:26
+[90m    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)[39m
+Emitted 'error' event on Server instance at:
+[90m    at emitErrorNT (node:net:2044:8)[39m
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)[39m {
+  code: [32m'EADDRINUSE'[39m,
+  errno: [33m-4091[39m,
+  syscall: [32m'listen'[39m,
+  address: [32m'::'[39m,
+  port: [33m3001[39m
+}
+
+Node.js v24.16.0
+[90m8:18:08 PM[39m [96m[tsx][39m [95mchange[39m in [92m./src\index.ts[39m [33mRerunning...[39m
+cnode:events:487
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+[90m    at Server.setupListenHandle [as _listen2] (node:net:2008:16)[39m
+[90m    at listenInCluster (node:net:2065:12)[39m
+[90m    at Server.listen (node:net:2170:7)[39m
+    at app.listen [90m(D:\Git\soul-point\server\[39mnode_modules\[4mexpress[24m\lib\application.js:635:24[90m)[39m
+    at <anonymous> [90m(D:\Git\soul-point\server\[39msrc\index.ts:385:5[90m)[39m
+[90m    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)[39m
+    at async node:internal/modules/esm/loader:633:26
+[90m    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)[39m
+Emitted 'error' event on Server instance at:
+[90m    at emitErrorNT (node:net:2044:8)[39m
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)[39m {
+  code: [32m'EADDRINUSE'[39m,
+  errno: [33m-4091[39m,
+  syscall: [32m'listen'[39m,
+  address: [32m'::'[39m,
+  port: [33m3001[39m
+}
+
+Node.js v24.16.0

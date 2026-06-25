@@ -128,6 +128,56 @@ export function getSummonerSpellImage(spellId: number): string {
   return `https://ddragon.leagueoflegends.com/cdn/14.9.1/img/spell/${spellMap[spellId] ?? "SummonerFlash"}.png`;
 }
 
+// ── LoL Data MCP (champion stats, abilities, items, runes) ───
+
+export async function fetchChampionStats(name: string, level?: number): Promise<unknown> {
+  const qs = level !== undefined ? `?level=${level}` : "";
+  return get(`/lol/champion/${encodeURIComponent(name)}/stats${qs}`);
+}
+
+export async function fetchChampionAbilities(name: string, slot?: string): Promise<unknown> {
+  const qs = slot ? `?slot=${slot}` : "";
+  return get(`/lol/champion/${encodeURIComponent(name)}/abilities${qs}`);
+}
+
+export async function fetchChampionPatchNotes(name: string, patch?: string): Promise<unknown> {
+  const qs = patch ? `?patch=${patch}` : "";
+  return get(`/lol/champion/${encodeURIComponent(name)}/patch-notes${qs}`);
+}
+
+export async function fetchItemData(name: string): Promise<unknown> {
+  return get(`/lol/item/${encodeURIComponent(name)}/data`);
+}
+
+export async function fetchItemPatchNotes(name: string, patch?: string): Promise<unknown> {
+  const qs = patch ? `?patch=${patch}` : "";
+  return get(`/lol/item/${encodeURIComponent(name)}/patch-notes${qs}`);
+}
+
+export async function fetchRuneData(name: string): Promise<unknown> {
+  return get(`/lol/rune/${encodeURIComponent(name)}/data`);
+}
+
+export async function fetchRunePatchNotes(name: string, patch?: string): Promise<unknown> {
+  const qs = patch ? `?patch=${patch}` : "";
+  return get(`/lol/rune/${encodeURIComponent(name)}/patch-notes${qs}`);
+}
+
+// ── Advanced analytics ────────────────────────────────────────
+
+export async function fetchMetaSnapshot(): Promise<unknown> {
+  return get("/analytics/meta");
+}
+
+export async function fetchChampionSynergies(name: string, position: string): Promise<unknown> {
+  return get(`/analytics/synergies/${encodeURIComponent(name)}/${encodeURIComponent(position)}`);
+}
+
+export async function fetchBuildRecommendation(name: string, position: string, tier?: string): Promise<unknown> {
+  const qs = tier ? `?tier=${tier}` : "";
+  return get(`/analytics/build/${encodeURIComponent(name)}/${encodeURIComponent(position)}${qs}`);
+}
+
 // ── OP.GG Build data (via MCP proxy) ─────────────────────────
 
 export async function fetchOPGGChampionAnalysis(
@@ -151,6 +201,17 @@ export async function fetchOPGGMetaChampions(
   if (rankKey) params.set("tier", rankKey);
   const qs = params.toString();
   return get(`/opgg/meta/${encodeURIComponent(position)}${qs ? `?${qs}` : ""}`);
+}
+
+// ── Champion meta stats ──────────────────────────────────────
+
+export interface ChampMetaEntry {
+  winRate: number; pickRate: number; banRate: number;
+  tier: string; games: number; kda: number; rank: number; position: string;
+}
+
+export function fetchChampionMeta(): Promise<Record<string, ChampMetaEntry>> {
+  return get("/champion-meta");
 }
 
 // ── Leaderboard ──────────────────────────────────────────────

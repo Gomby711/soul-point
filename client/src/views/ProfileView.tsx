@@ -318,8 +318,29 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
       {/* Error state */}
       {state.error && (
         <OrnatePanel className="p-8 text-center mb-4">
-          <div className="text-[#FF4E50] font-['Cinzel'] text-sm mb-2">Summoner Not Found</div>
-          <div className="text-[#5B7A8C] text-xs">{state.error}</div>
+          <div className="text-[#FF4E50] font-['Cinzel'] text-sm mb-2">
+            {state.error.toLowerCase().includes("forbidden") || state.error.includes("403")
+              ? "API Key Expired"
+              : state.error.toLowerCase().includes("404") || state.error.toLowerCase().includes("not found")
+              ? "Summoner Not Found"
+              : state.error.toLowerCase().includes("failed to fetch") || state.error.toLowerCase().includes("network")
+              ? "Server Unavailable"
+              : "Search Error"}
+          </div>
+          <div className="text-[#5B7A8C] text-xs mb-3">{state.error}</div>
+          {(state.error.toLowerCase().includes("forbidden") || state.error.includes("403")) && (
+            <div className="text-[#785A28] text-xs font-['Cinzel'] mt-2 border border-[#785A2844] p-3">
+              Your Riot API key has expired. Renew it at{" "}
+              <span className="text-[#C89B3C]">developer.riotgames.com</span>{" "}
+              then update <code className="text-[#0AC8B9]">server/.env</code>.
+            </div>
+          )}
+          {(state.error.toLowerCase().includes("failed to fetch") || state.error.toLowerCase().includes("network")) && (
+            <div className="text-[#785A28] text-xs font-['Cinzel'] mt-2 border border-[#785A2844] p-3">
+              Make sure the API server is running:{" "}
+              <code className="text-[#0AC8B9]">npm run dev:server</code>
+            </div>
+          )}
         </OrnatePanel>
       )}
 

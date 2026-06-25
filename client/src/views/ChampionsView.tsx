@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Search, ArrowUp, ArrowDown } from "lucide-react";
 import { winRateColor } from "@/lib/utils";
 import { useChampionData, type ChampionInfo, type PrimaryRole } from "@/hooks/useChampionData";
-import { ChampionBuildSubPage } from "@/views/ChampionBuildSubPage";
+import { ChampionBuildSubPage, prefetchOPGGBuild } from "@/views/ChampionBuildSubPage";
 import { RoleIcon, RoleBadge, ROLE_COLORS } from "@/components/common/RoleIcon";
 
 // ── Role definitions ───────────────────────────────────────────
@@ -99,17 +99,17 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
       {/* ══ LEFT PANEL: champion icon grid ══════════════════════ */}
       <div
         className="flex flex-col border-r border-[#1E2D3D] shrink-0"
-        style={{ width: 310, background: "#060E1A" }}
+        style={{ width: 360, background: "#060E1A" }}
       >
         {/* Search */}
-        <div className="p-2.5 border-b border-[#1E2D3D]">
+        <div className="p-3 border-b border-[#1E2D3D]">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5B7A8C]" />
             <input
               value={leftQuery}
               onChange={e => setLeftQuery(e.target.value)}
               placeholder="Search a champion"
-              className="w-full pl-9 pr-3 py-2.5 bg-[#0A1428] border border-[#1E2D3D] text-sm text-[#C8AA6E] font-['Cinzel'] placeholder-[#2E4A5C] focus:outline-none focus:border-[#785A28]"
+              className="w-full pl-9 pr-3 py-3 bg-[#0A1428] border border-[#1E2D3D] text-sm text-[#C8AA6E] font-['Cinzel'] placeholder-[#2E4A5C] focus:outline-none focus:border-[#785A28]"
             />
           </div>
         </div>
@@ -121,22 +121,22 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
               key={r}
               onClick={() => setLeftRole(r)}
               title={r}
-              className={`flex-1 h-11 flex items-center justify-center transition-all border-b-2 ${
+              className={`flex-1 h-13 flex items-center justify-center transition-all border-b-2 ${
                 leftRole === r
                   ? "border-[#C89B3C] bg-[#C89B3C]/10"
                   : "border-transparent hover:bg-[#0A1428]"
               }`}
             >
               {leftRole === r
-                ? <RoleBadge role={r} size={26} />
-                : <RoleIcon role={r} size={20} color="#3a4a5a" />
+                ? <RoleBadge role={r} size={30} />
+                : <RoleIcon role={r} size={24} color="#3a4a5a" />
               }
             </button>
           ))}
         </div>
 
         {/* Champion grid */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-2.5">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-40 gap-3">
               <div className="text-[#C89B3C] text-sm font-['Cinzel'] animate-pulse">Loading champions...</div>
@@ -147,16 +147,17 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-5 gap-2">
               {leftFiltered.map(c => (
                 <button
                   key={c.id}
                   onClick={() => handleSelectChampion(c.id)}
+                  onMouseEnter={() => prefetchOPGGBuild(c.name, c.primaryRole)}
                   title={c.name}
-                  className="flex flex-col items-center gap-1 p-1 rounded-sm hover:bg-[#0A1428] transition-colors group"
+                  className="flex flex-col items-center gap-1.5 p-1.5 rounded-sm hover:bg-[#0A1428] transition-colors group"
                 >
-                  <div className="relative w-12 h-12 shrink-0">
-                    <div className="w-12 h-12 rounded-sm overflow-hidden border border-[#1E2D3D] group-hover:border-[#C89B3C] transition-colors">
+                  <div className="relative w-14 h-14 shrink-0">
+                    <div className="w-14 h-14 rounded-sm overflow-hidden border border-[#1E2D3D] group-hover:border-[#C89B3C] transition-colors">
                       <img
                         src={c.imageUrl}
                         alt={c.name}
@@ -167,10 +168,10 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                     </div>
                     {/* Role icon badge */}
                     <div className="absolute -bottom-1 -right-1">
-                      <RoleBadge role={c.primaryRole} size={20} />
+                      <RoleBadge role={c.primaryRole} size={22} />
                     </div>
                   </div>
-                  <span className="text-[8px] font-['Cinzel'] text-[#5B7A8C] group-hover:text-[#C89B3C] transition-colors text-center leading-tight w-full truncate">
+                  <span className="text-[9px] font-['Cinzel'] text-[#5B7A8C] group-hover:text-[#C89B3C] transition-colors text-center leading-tight w-full truncate">
                     {c.name.length > 9 ? c.name.split(/[\s']/)[0] : c.name}
                   </span>
                 </button>
@@ -194,15 +195,15 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
             <button
               key={r}
               onClick={() => setRightRole(r)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3.5 text-xs font-['Cinzel'] tracking-widest transition-all border-b-2 ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-4 text-xs font-['Cinzel'] tracking-widest transition-all border-b-2 ${
                 rightRole === r
                   ? "border-[#0AC8B9] bg-[#0AC8B9]/5 text-[#C8AA6E]"
                   : "border-transparent text-[#5B7A8C] hover:text-[#A0B4C8] hover:bg-[#0A1428]"
               }`}
             >
               {rightRole === r
-                ? <RoleBadge role={r} size={22} />
-                : <RoleIcon role={r} size={18} color="#3a4a5a" />
+                ? <RoleBadge role={r} size={26} />
+                : <RoleIcon role={r} size={22} color="#3a4a5a" />
               }
               <span className="hidden lg:inline">{ROLE_LABEL_MAP[r]}</span>
             </button>
@@ -231,7 +232,7 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                   ].map(({ label, cls }) => (
                     <th
                       key={label}
-                      className={`px-4 py-3 font-['Cinzel'] text-[10px] tracking-wider text-[#785A28] uppercase ${cls}`}
+                      className={`px-5 py-4 font-['Cinzel'] text-xs tracking-wider text-[#785A28] uppercase ${cls}`}
                     >
                       {label}
                     </th>
@@ -249,76 +250,77 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                       key={c.id}
                       className="border-b border-[#131E2E] hover:bg-[#0C1520] transition-colors cursor-pointer group"
                       onClick={() => handleSelectChampion(c.id)}
+                      onMouseEnter={() => prefetchOPGGBuild(c.name, c.primaryRole)}
                     >
                       {/* Rank + trend */}
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[#8A9BB4] text-sm w-6 text-right shrink-0">{i + 1}</span>
+                          <span className="font-mono text-[#8A9BB4] text-sm w-7 text-right shrink-0">{i + 1}</span>
                           {trend !== 0 ? (
-                            <span className="flex items-center gap-0.5 text-[11px] font-mono w-10 shrink-0"
+                            <span className="flex items-center gap-0.5 text-xs font-mono w-12 shrink-0"
                               style={{ color: trend > 0 ? "#0AC8B9" : "#FF4E50" }}>
-                              {trend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                              {trend > 0 ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
                               {Math.abs(trend)}
                             </span>
                           ) : (
-                            <span className="text-[11px] text-[#3a4a5a] font-mono w-10 shrink-0">=</span>
+                            <span className="text-xs text-[#3a4a5a] font-mono w-12 shrink-0">=</span>
                           )}
                         </div>
                       </td>
 
                       {/* Champion */}
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 shrink-0 rounded-sm overflow-hidden border border-[#1E2D3D] group-hover:border-[#785A28] transition-colors">
+                          <div className="w-12 h-12 shrink-0 rounded-sm overflow-hidden border border-[#1E2D3D] group-hover:border-[#785A28] transition-colors">
                             <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" loading="lazy"
                               onError={e => { (e.target as HTMLImageElement).style.opacity = "0.2"; }} />
                           </div>
-                          <span className="font-['Cinzel'] text-sm text-[#C8AA6E] group-hover:text-[#F0E6BE] transition-colors">
+                          <span className="font-['Cinzel'] text-base text-[#C8AA6E] group-hover:text-[#F0E6BE] transition-colors">
                             {c.name}
                           </span>
                         </div>
                       </td>
 
                       {/* Tier */}
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-['Cinzel'] font-bold text-xs px-2 py-0.5 rounded-sm"
+                      <td className="px-5 py-4 text-center">
+                        <span className="font-['Cinzel'] font-bold text-sm px-2.5 py-1 rounded-sm"
                           style={{ color: tierColor, background: tierColor + "20", border: `1px solid ${tierColor}50` }}>
                           {c.tier}
                         </span>
                       </td>
 
                       {/* Role icon */}
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-5 py-4 text-center">
                         <div className="flex justify-center">
-                          <RoleBadge role={c.primaryRole} size={24} />
+                          <RoleBadge role={c.primaryRole} size={28} />
                         </div>
                       </td>
 
                       {/* Win rate */}
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-mono font-bold text-sm" style={{ color: winRateColor(c.winRate) }}>
+                      <td className="px-5 py-4 text-center">
+                        <span className="font-mono font-bold text-base" style={{ color: winRateColor(c.winRate) }}>
                           {c.winRate.toFixed(2)}%
                         </span>
                       </td>
 
                       {/* Pick rate */}
-                      <td className="px-4 py-3 text-center font-mono text-sm text-[#A0B4C8]">
+                      <td className="px-5 py-4 text-center font-mono text-base text-[#A0B4C8]">
                         {c.pickRate.toFixed(2)}%
                       </td>
 
                       {/* Ban rate */}
-                      <td className="px-4 py-3 text-center font-mono text-sm text-[#A0B4C8]">
+                      <td className="px-5 py-4 text-center font-mono text-base text-[#A0B4C8]">
                         {c.banRate.toFixed(2)}%
                       </td>
 
                       {/* Weak against */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-center gap-2">
                           {weakAgainst.map(wc => (
                             <div
                               key={wc.id}
                               title={wc.name}
-                              className="w-8 h-8 rounded-sm overflow-hidden border border-[#1E2D3D] hover:border-[#FF4E50] transition-colors shrink-0"
+                              className="w-10 h-10 rounded-sm overflow-hidden border border-[#1E2D3D] hover:border-[#FF4E50] transition-colors shrink-0"
                               onClick={e => { e.stopPropagation(); handleSelectChampion(wc.id); }}
                             >
                               <img src={wc.imageUrl} alt={wc.name} className="w-full h-full object-cover" loading="lazy"

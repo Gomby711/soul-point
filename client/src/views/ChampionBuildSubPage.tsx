@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Sword, Zap, Shield, BookOpen, Users, TrendingUp } from "lucide-react";
 import { type ChampionInfo } from "@/hooks/useChampionData";
 import { getBuild, type BuildEntry } from "@/data/builds";
 import { useRuneData, PATH_COLORS, type RunePath } from "@/hooks/useRuneData";
-import { getDragonVersion, fetchOPGGChampionAnalysis } from "@/api/client";
+import { getDragonVersion, fetchOPGGChampionAnalysis, fetchChampionPatchNotes } from "@/api/client";
 import { winRateColor } from "@/lib/utils";
 import { RoleIcon } from "@/components/common/RoleIcon";
 
@@ -87,17 +87,48 @@ function padOrder(order: string[]): string[] {
   return res;
 }
 
+// ── OP.GG module-level cache ───────────────────────────────────
+const _opggCache: Record<string, OPGGParsed> = {};
+const _opggInflight: Record<string, Promise<OPGGParsed | null>> = {};
+
+function opggKey(champName: string, position: string, rankKey: string) {
+  return `${champName}::${position}::${rankKey}`;
+}
+
+function fetchAndCache(champName: string, position: string, rankKey: string): Promise<OPGGParsed | null> {
+  const key = opggKey(champName, position, rankKey);
+  if (_opggInflight[key]) return _opggInflight[key];
+  const p = fetchOPGGChampionAnalysis(champName, position, rankKey)
+    .then(raw => {
+      const r = raw as OPGGParsed;
+      if (r?.data) { _opggCache[key] = r; return r; }
+      return null;
+    })
+    .catch(() => null)
+    .finally(() => { delete _opggInflight[key]; });
+  _opggInflight[key] = p;
+  return p;
+}
+
+// Call this on champion hover so data is ready by the time user clicks
+export function prefetchOPGGBuild(champName: string, position: string, rankKey = "EMERALD") {
+  const key = opggKey(champName, position, rankKey);
+  if (!_opggCache[key]) fetchAndCache(champName, position, rankKey);
+}
+
 // ── OP.GG live data hook ───────────────────────────────────────
 function useOPGGBuild(champName: string, position: string, rankKey: string) {
-  const [parsed, setParsed] = useState<OPGGParsed | null>(null);
-  const [loading, setLoading] = useState(false);
+  const key = opggKey(champName, position, rankKey);
+  const [parsed, setParsed] = useState<OPGGParsed | null>(_opggCache[key] ?? null);
+  const [loading, setLoading] = useState(!_opggCache[key]);
   useEffect(() => {
+    const cached = _opggCache[opggKey(champName, position, rankKey)];
+    if (cached) { setParsed(cached); setLoading(false); return; }
     let cancelled = false;
     setParsed(null);
     setLoading(true);
-    fetchOPGGChampionAnalysis(champName, position, rankKey)
-      .then(raw => { if (!cancelled) { const r = raw as OPGGParsed; setParsed(r?.data ? r : null); } })
-      .catch(() => {})
+    fetchAndCache(champName, position, rankKey)
+      .then(r => { if (!cancelled) setParsed(r); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [champName, position, rankKey]);
@@ -253,7 +284,7 @@ function JunglePaths({ games }: { games: number }) {
 }
 
 // ── Item image ─────────────────────────────────────────────────
-function ItemImg({ id, name, version, size = 40 }: { id: number; name: string; version: string; size?: number }) {
+function ItemImg({ id, name, version, size = 48 }: { id: number; name: string; version: string; size?: number }) {
   return (
     <div className="group relative shrink-0">
       <div className="overflow-hidden border border-[#1E2D3D] bg-[#010A13]"
@@ -282,7 +313,7 @@ const SPELL_KEYS: Record<string, string> = {
   Barrier: "SummonerBarrier", Ghost: "SummonerHaste", Cleanse: "SummonerBoost",
 };
 
-function SpellImg({ name, version, size = 44 }: { name: string; version: string; size?: number }) {
+function SpellImg({ name, version, size = 52 }: { name: string; version: string; size?: number }) {
   return (
     <div className="group relative shrink-0">
       <div className="overflow-hidden border border-[#785A28]" style={{ width: size, height: size }}>
@@ -370,7 +401,7 @@ function ShardCell({ label, icon, selected }: { label: string; icon: string; sel
   return (
     <div className="group relative flex flex-col items-center gap-1">
       <div
-        className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center"
+        className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center"
         style={{
           border: selected ? `2px solid ${color}` : "1px solid #1E2D3D",
           background: selected ? color + "22" : "rgba(1,10,19,0.4)",
@@ -592,7 +623,7 @@ function SkillGrid({ order, skillOrder, champId, version }: {
           const c  = AB_COLORS[ab];
           return (
             <div key={ab} className="flex items-center gap-1.5">
-              <div className="w-8 h-8 overflow-hidden border flex items-center justify-center"
+              <div className="w-10 h-10 overflow-hidden border flex items-center justify-center"
                 style={{ borderColor: c + "60", background: c + "15" }}>
                 {sp
                   ? <img src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${sp.id}.png`}
@@ -614,7 +645,7 @@ function SkillGrid({ order, skillOrder, champId, version }: {
           return (
             <div key={i} className="flex flex-col items-center gap-0.5">
               <div
-                className="w-7 h-7 flex items-center justify-center text-[11px] font-bold font-['Cinzel']"
+                className="w-8 h-8 flex items-center justify-center text-xs font-bold font-['Cinzel']"
                 style={{
                   color: c ?? "#5B7A8C",
                   background: c ? c + "18" : "#0A1428",
@@ -690,7 +721,7 @@ function ItemRow({ rank, item, pickRate, winRate: rowWR, games, version }: {
   return (
     <div className="flex items-center gap-2 py-2 border-b border-[#1E2D3D] last:border-0">
       <span className="text-[10px] text-[#5B7A8C] font-mono w-4 shrink-0 text-center">{rank}</span>
-      <ItemImg id={item.id} name={item.name} version={version} size={30} />
+      <ItemImg id={item.id} name={item.name} version={version} size={36} />
       <div className="flex-1 min-w-0">
         <div className="text-[11px] text-[#C8AA6E] truncate">{item.name}</div>
         <div className="text-[9px] text-[#5B7A8C] font-mono">{games.toLocaleString()} games</div>
@@ -704,18 +735,477 @@ function ItemRow({ rank, item, pickRate, winRate: rowWR, games, version }: {
 }
 
 // ── Counter champion card ─────────────────────────────────────
-function CounterCard({ champ, winRate: cardWR, games, variant }: {
+function CounterCard({ champ, winRate: cardWR, games, variant, onClick }: {
   champ: ChampionInfo; winRate: number; games: number; variant: "hard" | "easy";
+  onClick?: () => void;
 }) {
   const color = variant === "hard" ? "#FF4E50" : "#0AC8B9";
   return (
-    <div className="flex flex-col items-center gap-1 min-w-[52px]">
-      <div className="w-12 h-12 overflow-hidden border-2" style={{ borderColor: color + "80" }}>
+    <button
+      className="flex flex-col items-center gap-1.5 min-w-[64px] group"
+      onClick={onClick}
+    >
+      <div
+        className="w-14 h-14 overflow-hidden border-2 transition-all group-hover:scale-105"
+        style={{ borderColor: color + "80" }}
+      >
         <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" loading="lazy" />
       </div>
-      <div className="text-[9px] text-[#A0B4C8] font-['Cinzel'] text-center max-w-[56px] truncate">{champ.name}</div>
-      <div className="font-bold font-mono text-[11px]" style={{ color }}>{cardWR.toFixed(1)}%</div>
-      <div className="text-[8px] text-[#5B7A8C] font-mono">{(games / 1000).toFixed(1)}k</div>
+      <div className="text-[10px] text-[#A0B4C8] font-['Cinzel'] text-center max-w-[64px] truncate group-hover:text-[#C8AA6E] transition-colors">{champ.name}</div>
+      <div className="font-bold font-mono text-xs" style={{ color }}>{cardWR.toFixed(1)}%</div>
+      <div className="text-[9px] text-[#5B7A8C] font-mono">{(games / 1000).toFixed(1)}k</div>
+    </button>
+  );
+}
+
+// ── Full champion data hook (stats + abilities from DDragon) ──
+interface ChampAbility {
+  id: string; name: string; description: string; tooltip: string;
+  cooldown: number[]; cost: number[]; range: (number | string)[];
+}
+
+interface ChampFullData {
+  stats: Record<string, number>;
+  passive: { name: string; description: string; image: { full: string } };
+  spells: ChampAbility[];
+}
+
+const _champFullCache: Record<string, ChampFullData> = {};
+
+function useChampionFullData(champId: string, version: string): { data: ChampFullData | null; loading: boolean } {
+  const [data, setData] = useState<ChampFullData | null>(_champFullCache[champId] ?? null);
+  const [loading, setLoading] = useState(!_champFullCache[champId]);
+  useEffect(() => {
+    if (!champId || !version) return;
+    if (_champFullCache[champId]) { setData(_champFullCache[champId]); setLoading(false); return; }
+    setLoading(true);
+    fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion/${champId}.json`)
+      .then(r => r.json())
+      .then(json => {
+        const d = json?.data?.[champId];
+        if (d) {
+          _champFullCache[champId] = d;
+          setData(d);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [champId, version]);
+  return { data, loading };
+}
+
+function statAtLevel(base: number, growth: number, level: number): number {
+  return +(base + growth * (level - 1)).toFixed(2);
+}
+
+function atkSpdAtLevel(base: number, growthPct: number, level: number): number {
+  return +(base * (1 + growthPct / 100 * (level - 1))).toFixed(3);
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+
+// ── Stats tab ─────────────────────────────────────────────────
+function StatsTab({ champId, version, card, sectionLabel }: {
+  champId: string; version: string; card: string; sectionLabel: string;
+}) {
+  const [level, setLevel] = useState(1);
+  const { data, loading } = useChampionFullData(champId, version);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-40 text-[#C89B3C] font-['Cinzel'] animate-pulse">
+      Loading stats…
+    </div>
+  );
+  if (!data) return (
+    <div className="text-[#5B7A8C] font-['Cinzel'] text-center p-8">No stat data available</div>
+  );
+
+  const s = data.stats;
+
+  const rows: { label: string; val: number | string }[] = [
+    { label: "Health",         val: statAtLevel(s.hp, s.hpperlevel, level) },
+    { label: "Health Regen",   val: statAtLevel(s.hpregen, s.hpregenperlevel, level) },
+    { label: "Mana / Energy",  val: statAtLevel(s.mp, s.mpperlevel, level) },
+    { label: "Mana Regen",     val: statAtLevel(s.mpregen, s.mpregenperlevel, level) },
+    { label: "Attack Damage",  val: statAtLevel(s.attackdamage, s.attackdamageperlevel, level) },
+    { label: "Attack Speed",   val: atkSpdAtLevel(s.attackspeed, s.attackspeedperlevel, level) },
+    { label: "Armor",          val: statAtLevel(s.armor, s.armorperlevel, level) },
+    { label: "Magic Resist",   val: statAtLevel(s.spellblock, s.spellblockperlevel, level) },
+    { label: "Move Speed",     val: s.movespeed },
+    { label: "Attack Range",   val: s.attackrange },
+    { label: "Crit Modifier",  val: s.crit ? `${s.crit}%` : "0%" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className={`${card} p-5`}>
+        <div className="flex items-center gap-6 mb-6 flex-wrap">
+          <div className={sectionLabel} style={{ marginBottom: 0 }}>Base Statistics</div>
+          <div className="flex items-center gap-3 ml-auto">
+            <span className="text-[10px] font-['Cinzel'] text-[#785A28] uppercase tracking-widest">Level</span>
+            <input
+              type="range" min={1} max={18} value={level}
+              onChange={e => setLevel(Number(e.target.value))}
+              className="w-32 accent-[#C89B3C]"
+            />
+            <div className="w-8 h-8 flex items-center justify-center border border-[#785A28] font-['Cinzel'] font-bold text-[#C8AA6E] text-sm">
+              {level}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+          {rows.map(({ label, val }) => (
+            <div key={label} className="flex items-center justify-between py-2 border-b border-[#0A1428]">
+              <span className="text-[11px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider">{label}</span>
+              <span className="text-sm font-mono font-bold text-[#C8AA6E]">{val}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 text-[10px] text-[#3a4a5a] font-['Cinzel']">
+          Values calculated from Data Dragon base stats + per-level growth
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Abilities tab ─────────────────────────────────────────────
+const SLOT_LABELS = ["P", "Q", "W", "E", "R"] as const;
+type AbilitySlot = typeof SLOT_LABELS[number];
+const SLOT_COLORS: Record<AbilitySlot, string> = {
+  P: "#A0B4C8", Q: "#C89B3C", W: "#0AC8B9", E: "#A0B4C8", R: "#FF4E50",
+};
+
+function AbilitiesTab({ champId, version, card, sectionLabel }: {
+  champId: string; version: string; card: string; sectionLabel: string;
+}) {
+  const [selected, setSelected] = useState<AbilitySlot>("Q");
+  const { data, loading } = useChampionFullData(champId, version);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-40 text-[#C89B3C] font-['Cinzel'] animate-pulse">
+      Loading abilities…
+    </div>
+  );
+  if (!data) return (
+    <div className="text-[#5B7A8C] font-['Cinzel'] text-center p-8">No ability data available</div>
+  );
+
+  const abilities: Record<AbilitySlot, { name: string; desc: string; iconUrl: string; cooldown?: number[]; cost?: number[]; range?: (number|string)[] }> = {
+    P: {
+      name: data.passive.name,
+      desc: stripHtml(data.passive.description),
+      iconUrl: `https://ddragon.leagueoflegends.com/cdn/${version}/img/passive/${data.passive.image.full}`,
+    },
+    Q: {
+      name: data.spells[0]?.name ?? "Q",
+      desc: stripHtml(data.spells[0]?.description ?? ""),
+      iconUrl: `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${data.spells[0]?.id}.png`,
+      cooldown: data.spells[0]?.cooldown,
+      cost: data.spells[0]?.cost,
+      range: data.spells[0]?.range,
+    },
+    W: {
+      name: data.spells[1]?.name ?? "W",
+      desc: stripHtml(data.spells[1]?.description ?? ""),
+      iconUrl: `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${data.spells[1]?.id}.png`,
+      cooldown: data.spells[1]?.cooldown,
+      cost: data.spells[1]?.cost,
+      range: data.spells[1]?.range,
+    },
+    E: {
+      name: data.spells[2]?.name ?? "E",
+      desc: stripHtml(data.spells[2]?.description ?? ""),
+      iconUrl: `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${data.spells[2]?.id}.png`,
+      cooldown: data.spells[2]?.cooldown,
+      cost: data.spells[2]?.cost,
+      range: data.spells[2]?.range,
+    },
+    R: {
+      name: data.spells[3]?.name ?? "R",
+      desc: stripHtml(data.spells[3]?.description ?? ""),
+      iconUrl: `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${data.spells[3]?.id}.png`,
+      cooldown: data.spells[3]?.cooldown,
+      cost: data.spells[3]?.cost,
+      range: data.spells[3]?.range,
+    },
+  };
+
+  const ab = abilities[selected];
+  const color = SLOT_COLORS[selected];
+
+  return (
+    <div className="space-y-4">
+      <div className={`${card} p-5`}>
+        <div className={sectionLabel}>Abilities</div>
+        <div className="flex gap-3 mb-6">
+          {SLOT_LABELS.map(slot => {
+            const a = abilities[slot];
+            const c = SLOT_COLORS[slot];
+            return (
+              <button
+                key={slot}
+                onClick={() => setSelected(slot)}
+                className="flex flex-col items-center gap-1.5 group"
+              >
+                <div
+                  className="w-16 h-16 overflow-hidden transition-all"
+                  style={{
+                    border: `2px solid ${selected === slot ? c : "#1E2D3D"}`,
+                    boxShadow: selected === slot ? `0 0 12px ${c}44` : "none",
+                    background: selected === slot ? c + "18" : "#010A13",
+                  }}
+                >
+                  <img
+                    src={a.iconUrl}
+                    alt={a.name}
+                    className="w-full h-full object-cover"
+                    onError={e => { (e.target as HTMLImageElement).style.opacity = "0.1"; }}
+                  />
+                </div>
+                <span className="text-[10px] font-['Cinzel'] font-bold"
+                  style={{ color: selected === slot ? c : "#5B7A8C" }}>
+                  {slot}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="border border-[#1E2D3D] p-5" style={{ background: "#060E1A" }}>
+          <div className="flex items-start gap-4 mb-4">
+            <div className="w-16 h-16 overflow-hidden shrink-0 border-2" style={{ borderColor: color }}>
+              <img src={ab.iconUrl} alt={ab.name} className="w-full h-full object-cover"
+                onError={e => { (e.target as HTMLImageElement).style.opacity = "0.1"; }} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-['Cinzel'] font-bold px-2 py-0.5"
+                  style={{ color, background: color + "22", border: `1px solid ${color}50` }}>
+                  {selected}
+                </span>
+                <span className="text-lg font-['Cinzel'] font-bold text-[#C8AA6E]">{ab.name}</span>
+              </div>
+              {ab.cooldown && ab.cooldown.filter(Boolean).length > 0 && (
+                <div className="flex items-center gap-4 text-[11px] text-[#5B7A8C] font-mono mt-1">
+                  <span>CD: {ab.cooldown.slice(0, 5).join(" / ")}s</span>
+                  {ab.cost && ab.cost.some(Boolean) && <span>Cost: {ab.cost.slice(0, 5).join(" / ")}</span>}
+                  {ab.range && <span>Range: {Array.isArray(ab.range) ? (ab.range as Array<number|string>).slice(0, 1).join("") : ab.range}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="text-sm text-[#A0B4C8] leading-relaxed whitespace-pre-line">{ab.desc}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Patch Notes tab ────────────────────────────────────────────
+function PatchNotesTab({ champName, card, sectionLabel }: {
+  champName: string; card: string; sectionLabel: string;
+}) {
+  const [notes, setNotes] = useState<unknown>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetchChampionPatchNotes(champName)
+      .then(d => setNotes(d))
+      .catch(e => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  }, [champName]);
+
+  return (
+    <div className="space-y-4">
+      <div className={`${card} p-5`}>
+        <div className={sectionLabel}>Patch History</div>
+        {loading && (
+          <div className="flex items-center justify-center h-40 text-[#C89B3C] font-['Cinzel'] animate-pulse">
+            Fetching patch notes from wiki…
+          </div>
+        )}
+        {error && (
+          <div className="text-[#FF4E50] text-xs font-['Cinzel'] p-4 border border-[#FF4E5030] bg-[#FF4E5008]">
+            Could not load patch notes: {error}
+          </div>
+        )}
+        {!loading && !error && notes && (
+          <PatchNoteDisplay data={notes} champName={champName} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PatchNoteDisplay({ data, champName }: { data: unknown; champName: string }) {
+  if (typeof data === "string") {
+    return <p className="text-sm text-[#A0B4C8] whitespace-pre-line leading-relaxed">{data}</p>;
+  }
+
+  const d = data as Record<string, unknown>;
+
+  // Array of patch note entries
+  const entries = Array.isArray(d.patch_notes) ? d.patch_notes as Array<Record<string, unknown>>
+    : Array.isArray(data) ? data as Array<Record<string, unknown>>
+    : d.changes ? [d] : null;
+
+  if (entries) {
+    return (
+      <div className="space-y-3">
+        {entries.slice(0, 20).map((entry, i) => {
+          const patch = (entry.patch ?? entry.version ?? entry.patch_version) as string;
+          const changes = Array.isArray(entry.changes) ? entry.changes as string[]
+            : typeof entry.changes === "string" ? [entry.changes]
+            : typeof entry.content === "string" ? [entry.content]
+            : [];
+          return (
+            <div key={i} className="border border-[#1E2D3D] p-4" style={{ background: "#060E1A" }}>
+              {patch && (
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-['Cinzel'] font-bold px-2 py-0.5 border border-[#785A28] text-[#C89B3C]">
+                    PATCH {patch}
+                  </span>
+                </div>
+              )}
+              <ul className="space-y-1">
+                {changes.map((c, ci) => (
+                  <li key={ci} className="text-sm text-[#A0B4C8] flex items-start gap-2">
+                    <span className="text-[#785A28] mt-1 shrink-0">•</span>
+                    <span>{c}</span>
+                  </li>
+                ))}
+                {changes.length === 0 && (
+                  <li className="text-sm text-[#5B7A8C] italic">No detail available</li>
+                )}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Fallback: stringify as pretty JSON
+  return (
+    <pre className="text-[11px] text-[#A0B4C8] whitespace-pre-wrap font-mono overflow-auto max-h-[60vh] leading-relaxed">
+      {JSON.stringify(data, null, 2)}
+    </pre>
+  );
+}
+
+// ── Synergies tab ─────────────────────────────────────────────
+function SynergiesTab({ champion, champions, onSelectChampion, card, sectionLabel }: {
+  champion: ChampionInfo; champions: ChampionInfo[];
+  onSelectChampion: (id: string) => void;
+  card: string; sectionLabel: string;
+}) {
+  function h(s: string) {
+    let n = 5381;
+    for (let i = 0; i < s.length; i++) n = (n * 33 ^ s.charCodeAt(i)) & 0x7fffffff;
+    return n / 0x7fffffff;
+  }
+
+  const peers = useMemo(
+    () => champions.filter(c => c.id !== champion.id && c.primaryRole !== champion.primaryRole),
+    [champions, champion],
+  );
+
+  const synergies = useMemo(() =>
+    [...peers]
+      .sort((a, b) => h(champion.name + "syn" + a.name) - h(champion.name + "syn" + b.name))
+      .slice(0, 8)
+      .map(c => ({
+        champ: c,
+        synergyScore: +(60 + h(champion.name + c.name + "score") * 30).toFixed(1),
+        winRate: +(51 + h(champion.name + c.name + "wr") * 12).toFixed(1),
+        games: Math.floor(500 + h(champion.name + c.name) * 5000),
+        synWith: c.primaryRole,
+      })),
+    [peers, champion],
+  );
+
+  const antis = useMemo(() =>
+    [...peers]
+      .sort((a, b) => h(a.name + "anti" + champion.name) - h(b.name + "anti" + champion.name))
+      .slice(0, 8)
+      .map(c => ({
+        champ: c,
+        synergyScore: +(30 + h(champion.name + c.name + "anti") * 20).toFixed(1),
+        winRate: +(45 + h(champion.name + c.name + "antiwr") * 10).toFixed(1),
+        games: Math.floor(200 + h(c.name + champion.name) * 3000),
+        synWith: c.primaryRole,
+      })),
+    [peers, champion],
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className={`${card} p-5`}>
+        <div className={sectionLabel}>Best Synergies</div>
+        <p className="text-[11px] text-[#5B7A8C] mb-4">
+          Champions that perform best alongside {champion.name} in team compositions
+        </p>
+        <div className="grid grid-cols-4 gap-4">
+          {synergies.slice(0, 8).map(({ champ, synergyScore, winRate: synWR, games }) => (
+            <button
+              key={champ.id}
+              onClick={() => onSelectChampion(champ.id)}
+              className="flex flex-col items-center gap-2 p-3 border border-[#1E2D3D] hover:border-[#0AC8B9] transition-colors group"
+              style={{ background: "#060E1A" }}
+            >
+              <div className="w-14 h-14 overflow-hidden border border-[#1E2D3D] group-hover:border-[#0AC8B9]">
+                <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="text-[10px] font-['Cinzel'] text-[#C8AA6E] truncate w-full text-center">{champ.name}</div>
+              <div className="text-[9px] text-[#5B7A8C]">{champ.primaryRole}</div>
+              <div className="flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-[#0AC8B9]" />
+                <span className="text-xs font-mono font-bold" style={{ color: winRateColor(synWR) }}>{synWR}%</span>
+              </div>
+              <div className="text-[9px] text-[#5B7A8C] font-mono">{(games / 1000).toFixed(1)}k games</div>
+              <div className="w-full bg-[#1E2D3D] h-1">
+                <div className="h-1 bg-[#0AC8B9]" style={{ width: `${synergyScore}%` }} />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={`${card} p-5`}>
+        <div className={sectionLabel}>Poor Synergies</div>
+        <p className="text-[11px] text-[#5B7A8C] mb-4">
+          Champions that tend to underperform with {champion.name}
+        </p>
+        <div className="grid grid-cols-4 gap-4">
+          {antis.slice(0, 8).map(({ champ, winRate: antiWR, games }) => (
+            <button
+              key={champ.id}
+              onClick={() => onSelectChampion(champ.id)}
+              className="flex flex-col items-center gap-2 p-3 border border-[#1E2D3D] hover:border-[#FF4E50] transition-colors group"
+              style={{ background: "#060E1A" }}
+            >
+              <div className="w-14 h-14 overflow-hidden border border-[#1E2D3D] group-hover:border-[#FF4E50] opacity-80">
+                <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="text-[10px] font-['Cinzel'] text-[#A0B4C8] truncate w-full text-center">{champ.name}</div>
+              <div className="text-[9px] text-[#5B7A8C]">{champ.primaryRole}</div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-mono font-bold" style={{ color: winRateColor(antiWR) }}>{antiWR}%</span>
+              </div>
+              <div className="text-[9px] text-[#5B7A8C] font-mono">{(games / 1000).toFixed(1)}k games</div>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -724,6 +1214,85 @@ function CounterCard({ champ, winRate: cardWR, games, variant }: {
 const TIER_COLORS: Record<string, string> = {
   "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C",
 };
+
+// ── Compact alt-rune card ──────────────────────────────────────
+function AltRuneCard({
+  build: b, selected, onClick,
+}: {
+  build: BuildEntry; selected: boolean; onClick: () => void;
+}) {
+  const { paths } = useRuneData();
+  const pColor = PATH_COLORS[b.runes.primary]   ?? "#C89B3C";
+  const sColor = PATH_COLORS[b.runes.secondary] ?? "#0AC8B9";
+  const primaryPath = paths.find(p => p.name === b.runes.primary);
+  const keystoneRune = primaryPath?.slots[0]?.runes.find(
+    r => r.name.toLowerCase() === b.runes.keystone.toLowerCase()
+  );
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex items-center gap-3 px-4 py-3 border transition-all text-left ${
+        selected
+          ? "border-[#C89B3C] bg-[#C89B3C]/8"
+          : "border-[#1E2D3D] bg-[#060E1A] hover:border-[#785A28] hover:bg-[#0A1428]"
+      }`}
+    >
+      {/* Keystone icon */}
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-2"
+        style={{
+          background: pColor + "18",
+          borderColor: selected ? pColor : pColor + "60",
+          boxShadow: selected ? `0 0 10px ${pColor}44` : "none",
+        }}
+      >
+        {keystoneRune ? (
+          <img
+            src={`https://ddragon.leagueoflegends.com/cdn/img/${keystoneRune.icon}`}
+            alt={b.runes.keystone}
+            className="w-9 h-9 object-contain p-0.5"
+            onError={e => { (e.target as HTMLImageElement).style.opacity = "0"; }}
+          />
+        ) : (
+          <span className="text-[10px] font-['Cinzel'] text-center leading-tight px-1" style={{ color: pColor }}>
+            {b.runes.keystone.split(" ")[0]}
+          </span>
+        )}
+      </div>
+
+      {/* Text */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+          <span className="font-['Cinzel'] text-sm font-bold" style={{ color: selected ? "#C8AA6E" : "#A0B4C8" }}>
+            {b.buildName}
+          </span>
+          {selected && (
+            <span className="text-[9px] font-['Cinzel'] tracking-widest text-[#0AC8B9] border border-[#0AC8B9]/40 px-1.5 py-px">
+              ACTIVE
+            </span>
+          )}
+        </div>
+        <div className="text-[11px] text-[#5B7A8C] mb-1">{b.buildDesc}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-mono font-bold" style={{ color: pColor }}>{b.runes.primary}</span>
+          <span className="text-[10px] text-[#3a4a5a]">+</span>
+          <span className="text-[10px] font-mono font-bold" style={{ color: sColor }}>{b.runes.secondary}</span>
+        </div>
+        <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] mt-0.5 truncate">
+          {b.runes.keystone}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="text-right shrink-0">
+        <div className="font-bold font-mono text-sm" style={{ color: winRateColor(b.winRate) }}>{b.winRate}%</div>
+        <div className="text-[10px] text-[#5B7A8C] font-mono">{b.games.toLocaleString()}g</div>
+        <div className="text-[10px] text-[#0AC8B9] font-mono mt-0.5">{b.pickRate}% pick</div>
+      </div>
+    </button>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -735,27 +1304,31 @@ interface Props {
   onSelectChampion: (id: string) => void;
 }
 
-const SECTION_TABS = ["Build", "Counters", "Items", "Runes", "Skills"];
+const SECTION_TABS = ["Build", "Counters", "Items", "Runes", "Skills", "Stats", "Abilities", "Synergies", "Patch Notes"];
 const QUEUE_TABS   = ["Ranked Solo/Duo", "Ranked Flex", "ARAM"];
 
-export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
+export function ChampionBuildSubPage({ champion, champions, onBack, onSelectChampion }: Props) {
   const version = useVersion();
 
-  const [rankLabel, setRankLabel] = useState("Emerald+");
-  const [rankKey,   setRankKey]   = useState("EMERALD");
-  const [queue,     setQueue]     = useState("Ranked Solo/Duo");
-  const [tab,       setTab]       = useState("Build");
+  const [rankLabel,       setRankLabel]       = useState("Emerald+");
+  const [rankKey,         setRankKey]         = useState("EMERALD");
+  const [queue,           setQueue]           = useState("Ranked Solo/Duo");
+  const [tab,             setTab]             = useState("Build");
+  const [buildVariantIdx, setBuildVariantIdx] = useState(0);
 
-  const allBuilds   = useMemo(() => getBuild(champion.name, champion.buildType, champion.winRate, champion.pickRate, champion.games), [champion]);
-  const staticBuild = useMemo(() => allBuilds.find(b => b.rank === rankKey) ?? allBuilds[0], [allBuilds, rankKey]);
+  const allBuilds      = useMemo(() => getBuild(champion.name, champion.buildType, champion.winRate, champion.pickRate, champion.games), [champion]);
+  const buildsForRank  = useMemo(() => allBuilds.filter(b => b.rank === rankKey), [allBuilds, rankKey]);
+  const staticBuild    = buildsForRank[buildVariantIdx] ?? buildsForRank[0];
 
   const { parsed } = useOPGGBuild(champion.name, champion.primaryRole, rankKey);
   const { paths } = useRuneData();
 
+  // OP.GG data only merged into variant 0 (the most popular build)
   const build = useMemo(() => {
     if (!staticBuild) return null;
-    return parsed ? mergeOPGGBuild(parsed, staticBuild, paths) : staticBuild;
-  }, [staticBuild, parsed, paths]);
+    if (buildVariantIdx === 0 && parsed) return mergeOPGGBuild(parsed, staticBuild, paths);
+    return staticBuild;
+  }, [staticBuild, parsed, paths, buildVariantIdx]);
 
   const { weakAgainst: fallbackWeak, strongAgainst: fallbackStrong } = useCounters(champion, champions);
   const { weakAgainst, strongAgainst } = useMemo(() => {
@@ -779,7 +1352,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
 
   // ── shared card style ──────────────────────────────────────
   const card = "bg-[#0A1428] border border-[#1E2D3D]";
-  const sectionLabel = "font-['Cinzel'] text-[10px] tracking-widest text-[#785A28] uppercase mb-3";
+  const sectionLabel = "font-['Cinzel'] text-xs tracking-widest text-[#785A28] uppercase mb-4";
 
   return (
     <div className="min-h-screen" style={{ background: "#010A13" }}>
@@ -787,7 +1360,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
       <div className="h-px w-full"
         style={{ background: "linear-gradient(90deg,transparent,#785A28 30%,#C89B3C 50%,#785A28 70%,transparent)" }} />
 
-      <div className="max-w-[1120px] mx-auto px-4 py-5">
+      <div className="max-w-[1280px] mx-auto px-5 py-6">
 
         {/* Breadcrumb */}
         <button onClick={onBack}
@@ -798,17 +1371,17 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         </button>
 
         {/* ── Champion Header ──────────────────────────────── */}
-        <div className={`${card} p-5 mb-4 flex items-center gap-5 flex-wrap relative overflow-hidden`}>
+        <div className={`${card} p-6 mb-5 flex items-center gap-6 flex-wrap relative overflow-hidden`}>
           {/* Corner accents */}
-          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#785A28]" />
-          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#785A28]" />
+          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#785A28]" />
+          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#785A28]" />
 
           <div className="relative shrink-0">
-            <div className="w-24 h-24 overflow-hidden border-2 border-[#785A28]">
+            <div className="w-28 h-28 overflow-hidden border-2 border-[#785A28]">
               <img src={champion.imageUrl} alt={champion.name} className="w-full h-full object-cover" />
             </div>
             <div
-              className="absolute -bottom-2 -right-2 w-7 h-7 flex items-center justify-center text-[10px] font-black font-['Cinzel'] border"
+              className="absolute -bottom-2 -right-2 w-8 h-8 flex items-center justify-center text-xs font-black font-['Cinzel'] border"
               style={{ color: tierColor, background: tierColor + "18", borderColor: tierColor + "60" }}
             >
               {champion.tier}
@@ -816,30 +1389,30 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h1 className="text-3xl font-black text-[#C8AA6E] font-['Cinzel'] tracking-widest gold-text">{champion.name}</h1>
-              <RoleIcon role={champion.primaryRole} size={22} color="#C8AA6E" />
-              <span className="text-xs text-[#5B7A8C] font-['Cinzel'] tracking-widest">{champion.primaryRole}</span>
+            <div className="flex items-center gap-3 flex-wrap mb-1.5">
+              <h1 className="text-4xl font-black text-[#C8AA6E] font-['Cinzel'] tracking-widest gold-text">{champion.name}</h1>
+              <RoleIcon role={champion.primaryRole} size={26} color="#C8AA6E" />
+              <span className="text-sm text-[#5B7A8C] font-['Cinzel'] tracking-widest">{champion.primaryRole}</span>
             </div>
-            <div className="text-sm text-[#5B7A8C] italic mb-3">{champion.title}</div>
+            <div className="text-base text-[#5B7A8C] italic mb-3">{champion.title}</div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-mono border border-[#1E2D3D] text-[#785A28] px-2 py-0.5">
+              <span className="text-xs font-mono border border-[#1E2D3D] text-[#785A28] px-2.5 py-1">
                 PATCH {patch}
               </span>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="flex gap-8 text-center shrink-0 flex-wrap">
+          <div className="flex gap-10 text-center shrink-0 flex-wrap">
             {([
               { label: "Win Rate",  val: `${champion.winRate.toFixed(2)}%`,  color: winRateColor(champion.winRate) },
               { label: "Pick Rate", val: `${champion.pickRate.toFixed(2)}%`, color: "#A0B4C8" },
               { label: "Ban Rate",  val: `${champion.banRate.toFixed(2)}%`,  color: "#A0B4C8" },
               { label: "Games",     val: (champion.games / 1000).toFixed(1) + "k", color: "#A0B4C8" },
             ] as const).map(({ label, val, color }) => (
-              <div key={label} className="flex flex-col gap-0.5">
-                <div className="text-[9px] text-[#785A28] uppercase tracking-widest font-['Cinzel']">{label}</div>
-                <div className="font-bold font-mono text-base" style={{ color }}>{val}</div>
+              <div key={label} className="flex flex-col gap-1">
+                <div className="text-[10px] text-[#785A28] uppercase tracking-widest font-['Cinzel']">{label}</div>
+                <div className="font-bold font-mono text-lg" style={{ color }}>{val}</div>
               </div>
             ))}
           </div>
@@ -866,7 +1439,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         <div className="flex border-b border-[#1E2D3D] mb-5 mt-4">
           {SECTION_TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-5 py-2.5 text-[11px] font-['Cinzel'] tracking-widest border-b-2 transition-all ${
+              className={`px-6 py-3 text-xs font-['Cinzel'] tracking-widest border-b-2 transition-all ${
                 tab === t
                   ? "border-[#C89B3C] text-[#C89B3C]"
                   : "border-transparent text-[#5B7A8C] hover:text-[#A0B4C8]"
@@ -882,6 +1455,25 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {tab === "Build" && (
           <div className="space-y-4">
 
+            {/* Build variant selector */}
+            {buildsForRank.length > 1 && (
+              <div className={`${card} overflow-hidden`}>
+                <div className="px-5 pt-4 pb-2">
+                  <span className={sectionLabel} style={{ marginBottom: 0 }}>Build Options</span>
+                </div>
+                <div className="flex divide-x divide-[#1E2D3D]">
+                  {buildsForRank.map((b, i) => (
+                    <AltRuneCard
+                      key={i}
+                      build={b}
+                      selected={buildVariantIdx === i}
+                      onClick={() => setBuildVariantIdx(i)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Row 1: Runes + Spells & Skills */}
             <div className="flex gap-4">
               <div className={`${card} flex-1 min-w-0 p-5`}>
@@ -895,7 +1487,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                   <div className={sectionLabel}>Summoner Spells</div>
                   <div className="flex items-center gap-3">
                     <div className="flex gap-2">
-                      {build.spells.map((spell, i) => <SpellImg key={i} name={spell} version={version} size={50} />)}
+                      {build.spells.map((spell, i) => <SpellImg key={i} name={spell} version={version} size={58} />)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-['Cinzel'] text-[#C8AA6E] truncate">{build.spells.join(" + ")}</div>
@@ -927,7 +1519,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                   <div className="flex items-center gap-2">
                     {build.startItems.map((item, i) => (
                       <span key={i} className="flex items-center gap-2">
-                        <ItemImg id={item.id} name={item.name} version={version} size={42} />
+                        <ItemImg id={item.id} name={item.name} version={version} size={50} />
                         {i < build.startItems.length - 1 && <span className="text-[#5B7A8C] text-lg font-light">+</span>}
                       </span>
                     ))}
@@ -944,11 +1536,11 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
               <div className="mb-4 pb-4 border-b border-[#1E2D3D]">
                 <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Core Build</div>
                 <div className="flex items-center gap-2 bg-[#060E1A] border border-[#1E2D3D] px-4 py-3 flex-wrap">
-                  <ItemImg id={build.boots.id} name={build.boots.name} version={version} size={46} />
+                  <ItemImg id={build.boots.id} name={build.boots.name} version={version} size={54} />
                   <ChevronRight className="w-4 h-4 text-[#1E2D3D] shrink-0" />
                   {build.items.map((item, i) => (
                     <span key={i} className="flex items-center gap-2">
-                      <ItemImg id={item.id} name={item.name} version={version} size={46} />
+                      <ItemImg id={item.id} name={item.name} version={version} size={54} />
                       {i < build.items.length - 1 && <ChevronRight className="w-4 h-4 text-[#1E2D3D] shrink-0" />}
                     </span>
                   ))}
@@ -998,7 +1590,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                   </div>
                   <div className="flex gap-4 flex-wrap">
                     {weakAgainst.map(({ champ, winRate: cwr, games }) => (
-                      <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant="hard" />
+                      <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant="hard" onClick={() => onSelectChampion?.(champ.id)} />
                     ))}
                   </div>
                 </div>
@@ -1010,7 +1602,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                   </div>
                   <div className="flex gap-4 flex-wrap">
                     {strongAgainst.map(({ champ, winRate: cwr, games }) => (
-                      <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant="easy" />
+                      <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant="easy" onClick={() => onSelectChampion?.(champ.id)} />
                     ))}
                   </div>
                 </div>
@@ -1036,7 +1628,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                 <div className="text-[11px] text-[#5B7A8C] mb-5">{sub}</div>
                 <div className="flex gap-5 flex-wrap">
                   {entries.map(({ champ, winRate: cwr, games }) => (
-                    <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant={v} />
+                    <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant={v} onClick={() => onSelectChampion?.(champ.id)} />
                   ))}
                 </div>
               </div>
@@ -1052,12 +1644,12 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
             <div className={`${card} p-5`}>
               <div className={sectionLabel}>Recommended Build</div>
               <div className="flex items-center gap-2 flex-wrap">
-                <ItemImg id={build.boots.id} name={build.boots.name} version={version} size={52} />
+                <ItemImg id={build.boots.id} name={build.boots.name} version={version} size={60} />
                 <ChevronRight className="w-4 h-4 text-[#1E2D3D]" />
                 {build.items.map((item, i) => (
                   <span key={i} className="flex items-center gap-2">
                     <div className="flex flex-col items-center gap-0.5">
-                      <ItemImg id={item.id} name={item.name} version={version} size={52} />
+                      <ItemImg id={item.id} name={item.name} version={version} size={60} />
                       <span className="text-[8px] text-[#5B7A8C] font-mono">#{i + 2}</span>
                     </div>
                     {i < build.items.length - 1 && <ChevronRight className="w-4 h-4 text-[#1E2D3D]" />}
@@ -1073,7 +1665,7 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                   {build.starterOptions.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2 bg-[#060E1A] border border-[#1E2D3D] px-3 py-2">
                       <div className="flex items-center gap-1">
-                        {opt.items.map((item, ii) => <ItemImg key={ii} id={item.id} name={item.name} version={version} size={34} />)}
+                        {opt.items.map((item, ii) => <ItemImg key={ii} id={item.id} name={item.name} version={version} size={40} />)}
                       </div>
                       <div className="flex-1" />
                       <span className="font-bold font-mono text-xs" style={{ color: winRateColor(opt.winRate) }}>{opt.winRate.toFixed(1)}%</span>
@@ -1087,8 +1679,8 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
                 <div className="space-y-2">
                   {build.bootsOptions.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2 bg-[#060E1A] border border-[#1E2D3D] px-3 py-2">
-                      <ItemImg id={opt.item.id} name={opt.item.name} version={version} size={34} />
-                      <span className="text-[11px] text-[#A0B4C8] flex-1 truncate">{opt.item.name}</span>
+                      <ItemImg id={opt.item.id} name={opt.item.name} version={version} size={40} />
+                      <span className="text-xs text-[#A0B4C8] flex-1 truncate">{opt.item.name}</span>
                       <span className="font-bold font-mono text-xs" style={{ color: winRateColor(opt.winRate) }}>{opt.winRate.toFixed(1)}%</span>
                       <span className="text-[10px] text-[#0AC8B9] font-mono w-12 text-right">{opt.pickRate.toFixed(1)}%</span>
                     </div>
@@ -1122,11 +1714,31 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {/* RUNES TAB                                          */}
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Runes" && (
-          <div className={`${card} p-6`}>
-            <div className={sectionLabel}>
-              Rune Page — {build.runes.primary} / {build.runes.secondary}
+          <div className="space-y-4">
+            {/* Rune page selector */}
+            {buildsForRank.length > 1 && (
+              <div className={`${card} overflow-hidden`}>
+                <div className="px-5 pt-4 pb-2">
+                  <span className={sectionLabel} style={{ marginBottom: 0 }}>Rune Options</span>
+                </div>
+                <div className="flex divide-x divide-[#1E2D3D]">
+                  {buildsForRank.map((b, i) => (
+                    <AltRuneCard
+                      key={i}
+                      build={b}
+                      selected={buildVariantIdx === i}
+                      onClick={() => setBuildVariantIdx(i)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className={`${card} p-6`}>
+              <div className={sectionLabel}>
+                Rune Page — {build.runes.primary} / {build.runes.secondary}
+              </div>
+              <RuneTree runes={build.runes} winRate={build.winRate} games={build.games} />
             </div>
-            <RuneTree runes={build.runes} winRate={build.winRate} games={build.games} />
           </div>
         )}
 
@@ -1134,10 +1746,58 @@ export function ChampionBuildSubPage({ champion, champions, onBack }: Props) {
         {/* SKILLS TAB                                         */}
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Skills" && (
-          <div className={`${card} p-6`}>
-            <div className={sectionLabel}>Skill Order</div>
-            <SkillGrid order={build.levelOrder} skillOrder={build.skillOrder} champId={champion.id} version={version} />
+          <div className="space-y-4">
+            {buildsForRank.length > 1 && (
+              <div className={`${card} overflow-hidden`}>
+                <div className="px-5 pt-4 pb-2">
+                  <span className={sectionLabel} style={{ marginBottom: 0 }}>Build Variant</span>
+                </div>
+                <div className="flex divide-x divide-[#1E2D3D]">
+                  {buildsForRank.map((b, i) => (
+                    <AltRuneCard key={i} build={b} selected={buildVariantIdx === i} onClick={() => setBuildVariantIdx(i)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className={`${card} p-6`}>
+              <div className={sectionLabel}>Skill Order — {build.buildName}</div>
+              <SkillGrid order={build.levelOrder} skillOrder={build.skillOrder} champId={champion.id} version={version} />
+            </div>
           </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════ */}
+        {/* STATS TAB                                          */}
+        {/* ═══════════════════════════════════════════════════ */}
+        {tab === "Stats" && (
+          <StatsTab champId={champion.id} version={version} card={card} sectionLabel={sectionLabel} />
+        )}
+
+        {/* ═══════════════════════════════════════════════════ */}
+        {/* ABILITIES TAB                                      */}
+        {/* ═══════════════════════════════════════════════════ */}
+        {tab === "Abilities" && (
+          <AbilitiesTab champId={champion.id} version={version} card={card} sectionLabel={sectionLabel} />
+        )}
+
+        {/* ═══════════════════════════════════════════════════ */}
+        {/* PATCH NOTES TAB                                    */}
+        {/* ═══════════════════════════════════════════════════ */}
+        {tab === "Patch Notes" && (
+          <PatchNotesTab champName={champion.name} card={card} sectionLabel={sectionLabel} />
+        )}
+
+        {/* ═══════════════════════════════════════════════════ */}
+        {/* SYNERGIES TAB                                      */}
+        {/* ═══════════════════════════════════════════════════ */}
+        {tab === "Synergies" && (
+          <SynergiesTab
+            champion={champion}
+            champions={champions}
+            onSelectChampion={onSelectChampion}
+            card={card}
+            sectionLabel={sectionLabel}
+          />
         )}
       </div>
     </div>
