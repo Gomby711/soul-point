@@ -119,7 +119,7 @@ function computeForChampion(
   const totalGames = Object.values(entries).reduce((s, b) => s + b.wins + b.losses, 0);
   if (totalGames === 0) return null;
 
-  const builds = Object.values(entries)
+  const allScored = Object.values(entries)
     .filter(b => (b.wins + b.losses) >= MIN_GAMES)
     .map(b => {
       const games      = b.wins + b.losses;
@@ -127,7 +127,16 @@ function computeForChampion(
       const normPR     = games / totalGames;
       const score      = soulPointScore(winRate, normPR, games);
       return { ...b, games, winRate, normPR, score };
-    })
+    });
+
+  // One best build per primary rune path so each of the 3 slots is a different tree
+  const byPath = new Map<number, typeof allScored[0]>();
+  for (const b of allScored) {
+    const cur = byPath.get(b.primaryPath);
+    if (!cur || b.score > cur.score) byPath.set(b.primaryPath, b);
+  }
+
+  const builds = Array.from(byPath.values())
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
     .map((b, i): SoulPointBuild => ({

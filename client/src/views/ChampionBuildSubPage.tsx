@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, Sword, Zap, Shield, BookOpen, U
 import { type ChampionInfo } from "@/hooks/useChampionData";
 import { getBuild, type BuildEntry } from "@/data/builds";
 import { useRuneData, PATH_COLORS, type RunePath } from "@/hooks/useRuneData";
-import { getDragonVersion, fetchOPGGChampionAnalysis, fetchOPGGChampionBuilds, fetchChampionPatchNotes, fetchSPChampionBuilds } from "@/api/client";
+import { getDragonVersion, fetchOPGGChampionAnalysis, fetchOPGGChampionBuilds, fetchChampionPatchNotes, fetchSPChampionBuilds, fetchSPAllBuilds } from "@/api/client";
 import type { ChampionSoulPoint, SoulPointBuild } from "@/api/types";
 import { winRateColor } from "@/lib/utils";
 import { RoleIcon } from "@/components/common/RoleIcon";
@@ -1397,6 +1397,108 @@ function AltRuneCard({
   );
 }
 
+// ── Rune path toggle (global build variant selector) ──────────
+function RunePathToggle({
+  builds,
+  selectedIdx,
+  onSelect,
+}: {
+  builds: BuildEntry[];
+  selectedIdx: number;
+  onSelect: (i: number) => void;
+}) {
+  const { paths } = useRuneData();
+  if (builds.length <= 1) return null;
+
+  return (
+    <div className="flex border border-[#1E2D3D] overflow-hidden mb-4" style={{ background: "#060E1A" }}>
+      {builds.map((b, i) => {
+        const pColor    = PATH_COLORS[b.runes.primary] ?? "#C89B3C";
+        const pathObj   = paths.find(p => p.name === b.runes.primary);
+        const keystoneObj = pathObj?.slots[0]?.runes.find(
+          r => r.name.toLowerCase() === b.runes.keystone.toLowerCase()
+        );
+        const selected = i === selectedIdx;
+        return (
+          <button
+            key={i}
+            onClick={() => onSelect(i)}
+            className="flex-1 flex flex-col items-center gap-2 py-5 px-4 relative transition-all border-r border-[#1E2D3D] last:border-r-0"
+            style={{
+              background: selected ? pColor + "12" : "transparent",
+              borderBottom: selected ? `3px solid ${pColor}` : "3px solid transparent",
+            }}
+          >
+            {selected && (
+              <div className="absolute top-2 right-2">
+                <span className="text-[8px] font-['Cinzel'] tracking-widest border px-1.5 py-0.5"
+                  style={{ color: pColor, borderColor: pColor + "50", background: pColor + "12" }}>
+                  ACTIVE
+                </span>
+              </div>
+            )}
+
+            {/* Path icon with keystone badge */}
+            <div className="relative">
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all"
+                style={{
+                  borderColor: selected ? pColor : pColor + "40",
+                  background: pColor + "10",
+                  boxShadow: selected ? `0 0 20px ${pColor}50` : "none",
+                }}
+              >
+                {pathObj ? (
+                  <img
+                    src={`https://ddragon.leagueoflegends.com/cdn/img/${pathObj.icon}`}
+                    alt={pathObj.name}
+                    className="w-12 h-12 object-contain"
+                  />
+                ) : (
+                  <span className="text-sm font-['Cinzel'] font-bold" style={{ color: pColor }}>
+                    {b.runes.primary[0]}
+                  </span>
+                )}
+              </div>
+              {keystoneObj && (
+                <div
+                  className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full overflow-hidden border-2"
+                  style={{ borderColor: pColor, background: "#010A13" }}
+                >
+                  <img
+                    src={`https://ddragon.leagueoflegends.com/cdn/img/${keystoneObj.icon}`}
+                    alt={b.runes.keystone}
+                    className="w-full h-full object-contain p-0.5"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Path name */}
+            <div className="font-['Cinzel'] text-sm font-bold tracking-wider mt-2 transition-colors"
+              style={{ color: selected ? pColor : "#5B7A8C" }}>
+              {b.runes.primary}
+            </div>
+
+            {/* Keystone name */}
+            <div className="text-[10px] text-[#A0B4C8] font-['Cinzel'] text-center leading-tight max-w-[120px] truncate">
+              {b.runes.keystone}
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-3">
+              <span className="font-mono font-bold text-xs" style={{ color: winRateColor(b.winRate) }}>
+                {b.winRate}%
+              </span>
+              <span className="text-[10px] text-[#5B7A8C] font-mono">{b.games.toLocaleString()}g</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
@@ -1418,6 +1520,9 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
   const [queue,           setQueue]           = useState("Ranked Solo/Duo");
   const [tab,             setTab]             = useState("Build");
   const [buildVariantIdx, setBuildVariantIdx] = useState(0);
+
+  // Reset to build 0 whenever the champion changes
+  useEffect(() => { setBuildVariantIdx(0); }, [champion.id]);
 
   const allBuilds      = useMemo(() => getBuild(champion.name, champion.buildType, champion.winRate, champion.pickRate, champion.games), [champion]);
   const staticBase     = useMemo(() => allBuilds[0] ?? allBuilds.find(b => b.rank === rankKey), [allBuilds, rankKey]);
@@ -1569,8 +1674,15 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
           <RankSelect value={rankLabel} onChange={(l, k) => { setRankLabel(l); setRankKey(k); }} />
         </div>
 
+        {/* ── Rune path / build variant toggle ─────────────── */}
+        <RunePathToggle
+          builds={buildsForRank}
+          selectedIdx={buildVariantIdx}
+          onSelect={setBuildVariantIdx}
+        />
+
         {/* ── Section tabs ──────────────────────────────────── */}
-        <div className="flex border-b border-[#1E2D3D] mb-5 mt-4">
+        <div className="flex border-b border-[#1E2D3D] mb-5 mt-0">
           {SECTION_TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-6 py-3 text-xs font-['Cinzel'] tracking-widest border-b-2 transition-all ${
@@ -1588,37 +1700,6 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Build" && (
           <div className="space-y-4">
-
-            {/* Build variant selector */}
-            {buildsForRank.length > 0 && (
-              <div className={`${card} overflow-hidden`}>
-                <div className="px-5 pt-4 pb-2 flex items-center gap-3">
-                  <span className={sectionLabel} style={{ marginBottom: 0 }}>Build Options</span>
-                  {spData && spData.builds.length > 0 && (
-                    <span className="text-[9px] font-['Cinzel'] tracking-widest border px-2 py-0.5"
-                      style={{ color: "#C89B3C", borderColor: "#C89B3C33", background: "#C89B3C08" }}>
-                      LIVE MATCH DATA
-                    </span>
-                  )}
-                  {opggMultiBuilds.length > 0 && !(spData && spData.builds.length > 0) && (
-                    <span className="text-[9px] font-['Cinzel'] tracking-widest border px-2 py-0.5"
-                      style={{ color: "#0AC8B9", borderColor: "#0AC8B933", background: "#0AC8B908" }}>
-                      OP.GG LIVE
-                    </span>
-                  )}
-                </div>
-                <div className="flex divide-x divide-[#1E2D3D]">
-                  {buildsForRank.map((b, i) => (
-                    <AltRuneCard
-                      key={i}
-                      build={b}
-                      selected={buildVariantIdx === i}
-                      onClick={() => { setBuildVariantIdx(i); }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Row 1: Runes + Spells & Skills */}
             <div className="flex gap-4">
@@ -1861,24 +1942,6 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Runes" && (
           <div className="space-y-4">
-            {/* Rune page selector */}
-            {buildsForRank.length > 1 && (
-              <div className={`${card} overflow-hidden`}>
-                <div className="px-5 pt-4 pb-2">
-                  <span className={sectionLabel} style={{ marginBottom: 0 }}>Rune Options</span>
-                </div>
-                <div className="flex divide-x divide-[#1E2D3D]">
-                  {buildsForRank.map((b, i) => (
-                    <AltRuneCard
-                      key={i}
-                      build={b}
-                      selected={buildVariantIdx === i}
-                      onClick={() => setBuildVariantIdx(i)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
             <div className={`${card} p-6`}>
               <div className={sectionLabel}>
                 Rune Page — {build.runes.primary} / {build.runes.secondary}
@@ -1893,18 +1956,6 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Skills" && (
           <div className="space-y-4">
-            {buildsForRank.length > 1 && (
-              <div className={`${card} overflow-hidden`}>
-                <div className="px-5 pt-4 pb-2">
-                  <span className={sectionLabel} style={{ marginBottom: 0 }}>Build Variant</span>
-                </div>
-                <div className="flex divide-x divide-[#1E2D3D]">
-                  {buildsForRank.map((b, i) => (
-                    <AltRuneCard key={i} build={b} selected={buildVariantIdx === i} onClick={() => setBuildVariantIdx(i)} />
-                  ))}
-                </div>
-              </div>
-            )}
             <div className={`${card} p-6`}>
               <div className={sectionLabel}>Skill Order — {build.buildName}</div>
               <SkillGrid order={build.levelOrder} skillOrder={build.skillOrder} champId={champion.id} version={version} />
@@ -1948,4 +1999,17 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
       </div>
     </div>
   );
+}
+
+// ── Preload all champion SP builds at app startup ─────────────
+export function preloadAllSPBuilds(): void {
+  fetchSPAllBuilds()
+    .then(all => {
+      for (const c of all) {
+        if (!Object.prototype.hasOwnProperty.call(_spCache, c.champion)) {
+          _spCache[c.champion] = c;
+        }
+      }
+    })
+    .catch(() => {});
 }
