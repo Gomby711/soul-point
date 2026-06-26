@@ -593,10 +593,10 @@ function RankSidebarCard({ label, entry }: { label: string; entry: LeagueEntry |
         <div className="text-[9px] text-[#5B7A8C] font-mono">{entry.wins}W {entry.losses}L</div>
       </div>
 
-      <div className="flex items-center gap-3 mb-3">
-        <RankEmblem tier={entry.tier} size={384} />
-        <div>
-          <div className="font-['Cinzel'] font-black text-base" style={{ color: col }}>
+      <div className="flex flex-col items-center mb-3">
+        <RankEmblem tier={entry.tier} size={160} />
+        <div className="text-center mt-2">
+          <div className="font-['Cinzel'] font-black text-lg" style={{ color: col }}>
             {tierLabel} {entry.rank}
           </div>
           <div className="font-mono text-sm text-[#C89B3C]">{entry.leaguePoints} LP</div>
@@ -678,10 +678,9 @@ function TFTSidebarCard({ tft }: { tft: { tier: string; rank: string; lp: number
         <div className="text-[11px] font-['Cinzel'] font-bold text-[#C8AA6E]">TFT Ranked</div>
         <Crown className="w-3.5 h-3.5" style={{ color: col }} />
       </div>
-      <div className="flex items-center gap-3 mb-2">
-        <RankEmblem tier={tft.tier} size={320} />
-
-        <div>
+      <div className="flex flex-col items-center mb-2">
+        <RankEmblem tier={tft.tier} size={140} />
+        <div className="text-center mt-2">
           <div className="font-['Cinzel'] font-bold text-sm" style={{ color: col }}>{tft.tier} {tft.rank}</div>
           <div className="font-mono text-xs text-[#C89B3C]">{tft.lp} LP</div>
           <div className="text-[9px] text-[#5B7A8C]">WR <span style={{ color: winRateColor(wr) }}>{wr}%</span></div>

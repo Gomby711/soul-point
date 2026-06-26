@@ -277,9 +277,9 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       </td>
 
                       {/* Summoner */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <RankEmblem tier={e.tier} size={280} />
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-3">
+                          <RankEmblem tier={e.tier} size={64} />
                           <span className="font-['Cinzel'] text-[#C8AA6E] group-hover:text-[#F0E6BE] transition-colors truncate max-w-[160px]">
                             {e.summonerName}
                           </span>
