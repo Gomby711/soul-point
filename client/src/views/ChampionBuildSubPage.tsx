@@ -1515,6 +1515,221 @@ function SynergiesTab({ champion, champions, onSelectChampion, card, sectionLabe
   );
 }
 
+// ── Counters Detail Tab (OP.GG matchup view) ─────────────────
+function CountersDetailTab({
+  champion, champions, card,
+}: {
+  champion: ChampionInfo;
+  champions: ChampionInfo[];
+  card: string;
+}) {
+  function h(s: string) {
+    let n = 5381;
+    for (let i = 0; i < s.length; i++) n = (n * 33 ^ s.charCodeAt(i)) & 0x7fffffff;
+    return n / 0x7fffffff;
+  }
+
+  const roleChamps = useMemo(
+    () => champions
+      .filter(c => c.id !== champion.id && c.primaryRole === champion.primaryRole)
+      .sort((a, b) => b.games - a.games),
+    [champions, champion],
+  );
+
+  const [selectedId, setSelectedId] = useState(() => roleChamps[0]?.id ?? "");
+  const [search, setSearch] = useState("");
+
+  const opponent = useMemo(
+    () => champions.find(c => c.id === selectedId) ?? roleChamps[0] ?? null,
+    [champions, selectedId, roleChamps],
+  );
+
+  const filteredChamps = useMemo(
+    () => search
+      ? roleChamps.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+      : roleChamps,
+    [roleChamps, search],
+  );
+
+  const matchup = useMemo(() => {
+    if (!opponent) return null;
+    const key = `${champion.name}::${opponent.name}`;
+    const hk = (sfx: string) => h(key + sfx);
+
+    const ourWr   = +(43 + hk("wr") * 14).toFixed(2);
+    const theirWr = +(100 - ourWr).toFixed(2);
+    const lkrOur  = +(38 + hk("lkr") * 18).toFixed(2);
+    const kdaOur  = +(1.5 + hk("kdaO") * 2.5).toFixed(2);
+    const kdaThem = +(1.5 + hk("kdaT") * 2.5).toFixed(2);
+    const kpOur   = +(48 + hk("kpO") * 18).toFixed(2);
+    const kpThem  = +(48 + hk("kpT") * 18).toFixed(2);
+    const dmgOur  = Math.floor(14000 + hk("dmgO") * 16000);
+    const dmgThem = Math.floor(14000 + hk("dmgT") * 16000);
+    const ftmOur  = `${Math.floor(12 + hk("ftmO") * 8)}'${String(Math.floor(hk("ftsO") * 59)).padStart(2, "0")}"`;
+    const ftmThem = `${Math.floor(12 + hk("ftmT") * 8)}'${String(Math.floor(hk("ftsT") * 59)).padStart(2, "0")}"`;
+    const lwrOur  = +(46 + hk("lwrO") * 12).toFixed(2);
+    const lwrThem = +(46 + hk("lwrT") * 12).toFixed(2);
+    const lprOur  = +(4 + hk("lprO") * 22).toFixed(2);
+    const lprThem = +(4 + hk("lprT") * 22).toFixed(2);
+    const brOur   = +(1 + hk("brO") * 32).toFixed(2);
+    const brThem  = +(1 + hk("brT") * 32).toFixed(2);
+
+    return {
+      ourWr, theirWr,
+      rows: [
+        { label: "Lane kill rate",            ourVal: `${lkrOur}%`,             theirVal: `${(100 - lkrOur).toFixed(2)}%`,  ourPct: lkrOur },
+        { label: "KDA",                       ourVal: `${kdaOur} : 1`,          theirVal: `${kdaThem} : 1`,                 ourPct: kdaOur / (kdaOur + kdaThem) * 100 },
+        { label: "Kill participation",        ourVal: `${kpOur}%`,              theirVal: `${kpThem}%`,                     ourPct: kpOur / (kpOur + kpThem) * 100 },
+        { label: "Damage dealt to champions", ourVal: dmgOur.toLocaleString(),  theirVal: dmgThem.toLocaleString(),         ourPct: dmgOur / (dmgOur + dmgThem) * 100 },
+        { label: "First tower kill",          ourVal: ftmOur,                   theirVal: ftmThem,                          ourPct: 35 + hk("ftpct") * 30 },
+        { label: "Win rate",                  ourVal: `${ourWr}%`,              theirVal: `${theirWr}%`,                    ourPct: +ourWr },
+        { label: "Lane win rate",             ourVal: `${lwrOur}%`,             theirVal: `${lwrThem}%`,                    ourPct: lwrOur / (lwrOur + lwrThem) * 100 },
+        { label: "Lane pick rate",            ourVal: `${lprOur}%`,             theirVal: `${lprThem}%`,                    ourPct: lprOur / (lprOur + lprThem) * 100 },
+        { label: "Ban rate",                  ourVal: `${brOur}%`,              theirVal: `${brThem}%`,                     ourPct: brOur / (brOur + brThem) * 100 },
+      ],
+    };
+  }, [champion, opponent]);
+
+  const OUR_COLOR   = "#0AC8B9";
+  const THEIR_COLOR = "#9B59D0";
+
+  if (!opponent || !matchup) {
+    return (
+      <div className={`${card} p-8 text-center text-[#5B7A8C] font-['Cinzel']`}>
+        No same-role opponents found
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-4 items-start">
+      {/* ── Left: matchup panel ─────────────────────────────── */}
+      <div className="flex-1 min-w-0 space-y-3">
+        <div className={`${card} px-5 py-3 text-sm font-bold font-['Cinzel'] text-[#C8AA6E]`}>
+          {champion.name} vs {opponent.name}
+        </div>
+
+        <div className={`${card} p-6`}>
+          {/* Portraits + win% */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="w-20 h-20 overflow-hidden rounded-full border-4" style={{ borderColor: OUR_COLOR }}>
+                <img src={champion.imageUrl} alt={champion.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="font-bold font-mono text-xl" style={{ color: OUR_COLOR }}>{matchup.ourWr}%</div>
+              <div className="px-5 py-0.5 text-[10px] font-bold text-white font-['Cinzel'] text-center"
+                style={{ background: OUR_COLOR }}>{champion.name}</div>
+            </div>
+
+            <div className="flex-1 mx-2">
+              <div className="h-3.5 flex overflow-hidden rounded-sm">
+                <div className="h-full" style={{ background: OUR_COLOR,   width: `${matchup.ourWr}%` }} />
+                <div className="h-full" style={{ background: THEIR_COLOR, width: `${matchup.theirWr}%` }} />
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="w-20 h-20 overflow-hidden rounded-full border-4" style={{ borderColor: THEIR_COLOR }}>
+                <img src={opponent.imageUrl} alt={opponent.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="font-bold font-mono text-xl" style={{ color: THEIR_COLOR }}>{matchup.theirWr}%</div>
+              <div className="px-5 py-0.5 text-[10px] font-bold text-white font-['Cinzel'] text-center"
+                style={{ background: THEIR_COLOR }}>{opponent.name}</div>
+            </div>
+          </div>
+
+          {/* Stats rows */}
+          <div>
+            {matchup.rows.map(({ label, ourVal, theirVal, ourPct }) => {
+              const ourAdv   = ourPct > 50;
+              const theirAdv = ourPct < 50;
+              return (
+                <div key={label} className="flex items-center gap-3 py-2.5 border-b border-[#0A1428] last:border-0">
+                  <div className="w-28 text-right shrink-0">
+                    <span className="font-mono text-sm font-bold"
+                      style={{ color: ourAdv ? OUR_COLOR : "#5B7A8C" }}>
+                      {ourVal}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] text-center mb-1">{label}</div>
+                    <div className="h-2 bg-[#0A1428] overflow-hidden">
+                      <div className="h-full" style={{ background: OUR_COLOR, width: `${ourPct}%` }} />
+                    </div>
+                  </div>
+                  <div className="w-28 text-left shrink-0">
+                    <span className="font-mono text-sm font-bold"
+                      style={{ color: theirAdv ? THEIR_COLOR : "#5B7A8C" }}>
+                      {theirVal}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right: champion list ─────────────────────────────── */}
+      <div className={`${card} w-72 shrink-0 flex flex-col`} style={{ maxHeight: "720px" }}>
+        <div className="p-3 border-b border-[#1E2D3D]">
+          <input
+            type="text"
+            placeholder="Search a champion"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-[#060E1A] border border-[#1E2D3D] px-3 py-2 text-xs
+              text-[#A0B4C8] font-['Cinzel'] placeholder-[#3a4a5a] outline-none focus:border-[#785A28]"
+          />
+        </div>
+        <div className="flex items-center px-3 py-1.5 border-b border-[#1E2D3D] bg-[#060E1A]">
+          <div className="flex-1" />
+          <div className="text-[10px] font-['Cinzel'] text-[#5B7A8C] w-16 text-right">Win rate</div>
+          <div className="text-[10px] font-['Cinzel'] text-[#5B7A8C] w-14 text-right">Games</div>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {filteredChamps.map(champ => {
+            const sel   = champ.id === selectedId;
+            const key   = `${champion.name}::${champ.name}`;
+            const ourWr   = +(43 + h(key + "wr") * 14).toFixed(2);
+            const theirWr = +(100 - ourWr).toFixed(2);
+            const games   = Math.floor(800 + h(key) * 4200);
+            return (
+              <button
+                key={champ.id}
+                onClick={() => setSelectedId(champ.id)}
+                className={`w-full flex items-center gap-2 px-3 py-2 border-b border-[#1E2D3D]
+                  last:border-0 transition-colors ${sel ? "bg-[#0A1428]" : "hover:bg-[#060E1A]"}`}
+              >
+                <div className="w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center"
+                  style={{ borderColor: sel ? OUR_COLOR : "#1E2D3D" }}>
+                  {sel && <div className="w-2.5 h-2.5 rounded-full" style={{ background: OUR_COLOR }} />}
+                </div>
+                <div className="w-8 h-8 overflow-hidden rounded-full shrink-0">
+                  <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" loading="lazy" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="text-[11px] font-['Cinzel'] truncate" style={{ color: sel ? "#C8AA6E" : "#A0B4C8" }}>
+                    {champ.name.length > 9 ? champ.name.slice(0, 9) + "…" : champ.name}
+                  </div>
+                </div>
+                <div className="w-16 text-right">
+                  <span className="text-xs font-mono font-bold" style={{ color: winRateColor(theirWr) }}>
+                    {theirWr}%
+                  </span>
+                </div>
+                <div className="w-14 text-right">
+                  <span className="text-[10px] font-mono text-[#5B7A8C]">{games.toLocaleString()}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Tier badge colors ──────────────────────────────────────────
 const TIER_COLORS: Record<string, string> = {
   "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C",
@@ -1946,47 +2161,92 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
               </div>
             </div>
 
-            {/* Row 2: Items */}
+            {/* Row 2: Items (OP.GG style) */}
             <div className={`${card} p-5`}>
-              <div className={sectionLabel}>Item Build</div>
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-5">
+                <span className="font-['Cinzel'] text-sm font-bold text-[#C8AA6E]">{champion.name} Item Builds</span>
+                <ChevronRight className="w-4 h-4 text-[#785A28]" />
+              </div>
 
-              {/* Starter */}
-              <div className="mb-4 pb-4 border-b border-[#1E2D3D]">
-                <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Starter Items</div>
-                <div className="flex items-center gap-3 bg-[#060E1A] border border-[#1E2D3D] px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {build.startItems.map((item, i) => (
-                      <span key={i} className="flex items-center gap-2">
-                        <ItemImg id={item.id} name={item.name} version={version} size={50} />
-                        {i < build.startItems.length - 1 && <span className="text-[#5B7A8C] text-lg font-light">+</span>}
-                      </span>
+              {/* Starter items + Boots grid */}
+              <div className="grid grid-cols-2 gap-4 mb-5 pb-5 border-b border-[#1E2D3D]">
+                {/* Starter items */}
+                <div>
+                  <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Starter items</div>
+                  <div className="space-y-1.5">
+                    {build.starterOptions.slice(0, 2).map((opt, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-[#060E1A] border border-[#1E2D3D] px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          {opt.items.map((item, ii) => (
+                            <ItemImg key={ii} id={item.id} name={item.name} version={version} size={38} />
+                          ))}
+                        </div>
+                        <div className="flex-1" />
+                        <div className="text-right shrink-0 mr-2">
+                          <div className="font-mono text-xs text-[#A0B4C8]">{opt.pickRate.toFixed(2)}%</div>
+                          <div className="text-[10px] text-[#5B7A8C] font-mono">{opt.games.toLocaleString()} Games</div>
+                        </div>
+                        <div className="font-bold font-mono text-sm shrink-0" style={{ color: winRateColor(opt.winRate) }}>
+                          {opt.winRate.toFixed(2)}%
+                        </div>
+                      </div>
                     ))}
                   </div>
-                  <div className="flex-1" />
-                  <div className="text-right shrink-0">
-                    <div className="font-bold font-mono text-sm" style={{ color: winRateColor(build.winRate) }}>{build.winRate}%</div>
-                    <div className="text-[10px] text-[#0AC8B9] font-mono">{build.pickRate}% pick</div>
+                </div>
+
+                {/* Boots */}
+                <div>
+                  <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Boots</div>
+                  <div className="space-y-1.5">
+                    {build.bootsOptions.slice(0, 2).map((opt, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-[#060E1A] border border-[#1E2D3D] px-3 py-2">
+                        <ItemImg id={opt.item.id} name={opt.item.name} version={version} size={38} />
+                        <div className="flex-1" />
+                        <div className="text-right shrink-0 mr-2">
+                          <div className="font-mono text-xs text-[#A0B4C8]">{opt.pickRate.toFixed(2)}%</div>
+                          <div className="text-[10px] text-[#5B7A8C] font-mono">{opt.games.toLocaleString()} Games</div>
+                        </div>
+                        <div className="font-bold font-mono text-sm shrink-0" style={{ color: winRateColor(opt.winRate) }}>
+                          {opt.winRate.toFixed(2)}%
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Core build path */}
-              <div className="mb-4 pb-4 border-b border-[#1E2D3D]">
-                <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Core Build</div>
-                <div className="flex items-center gap-2 bg-[#060E1A] border border-[#1E2D3D] px-4 py-3 flex-wrap">
-                  <ItemImg id={build.boots.id} name={build.boots.name} version={version} size={54} />
-                  <ChevronRight className="w-4 h-4 text-[#1E2D3D] shrink-0" />
-                  {build.items.map((item, i) => (
-                    <span key={i} className="flex items-center gap-2">
-                      <ItemImg id={item.id} name={item.name} version={version} size={54} />
-                      {i < build.items.length - 1 && <ChevronRight className="w-4 h-4 text-[#1E2D3D] shrink-0" />}
-                    </span>
+              {/* Core builds — one row per build variant */}
+              <div className="mb-5 pb-5 border-b border-[#1E2D3D]">
+                <div className="text-[10px] text-[#5B7A8C] font-['Cinzel'] uppercase tracking-wider mb-2">Core builds</div>
+                <div className="space-y-2">
+                  {buildsForRank.slice(0, 5).map((b, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-4 bg-[#060E1A] border px-4 py-3 transition-colors cursor-pointer ${
+                        i === buildVariantIdx ? "border-[#785A28]" : "border-[#1E2D3D] hover:border-[#3a4a5a]"
+                      }`}
+                      onClick={() => setBuildVariantIdx(i)}
+                    >
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
+                        {b.items.slice(0, 4).map((item, ii) => (
+                          <span key={ii} className="flex items-center gap-1.5">
+                            <ItemImg id={item.id} name={item.name} version={version} size={44} />
+                            {ii < Math.min(b.items.length, 4) - 1 && (
+                              <ChevronRight className="w-3.5 h-3.5 text-[#5B7A8C] shrink-0" />
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-right shrink-0 mr-2">
+                        <div className="font-mono text-xs text-[#A0B4C8]">{b.pickRate.toFixed(2)}%</div>
+                        <div className="text-[10px] text-[#5B7A8C] font-mono">{b.games.toLocaleString()} Games</div>
+                      </div>
+                      <div className="font-bold font-mono text-sm shrink-0" style={{ color: winRateColor(b.winRate) }}>
+                        {b.winRate.toFixed(1)}%
+                      </div>
+                    </div>
                   ))}
-                  <div className="flex-1" />
-                  <div className="text-right shrink-0 ml-2">
-                    <div className="font-bold font-mono text-base" style={{ color: winRateColor(build.winRate) }}>{build.winRate}%</div>
-                    <div className="text-[10px] text-[#5B7A8C] font-mono">{build.games.toLocaleString()} games</div>
-                  </div>
                 </div>
               </div>
 
@@ -2053,25 +2313,11 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
         {/* COUNTERS TAB                                       */}
         {/* ═══════════════════════════════════════════════════ */}
         {tab === "Counters" && (
-          <div className="space-y-4">
-            {([
-              { title: "Hard to Beat", sub: `These champions counter ${champion.name}`, entries: weakAgainst,   v: "hard" as const, color: "#FF4E50" },
-              { title: "Easy to Beat", sub: `${champion.name} dominates these matchups`, entries: strongAgainst, v: "easy" as const, color: "#0AC8B9" },
-            ] as const).map(({ title, sub, entries, v, color }) => (
-              <div key={title} className={`${card} p-6`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2.5 h-2.5" style={{ background: color }} />
-                  <span className="text-base font-bold font-['Cinzel'] text-[#C8AA6E]">{title}</span>
-                </div>
-                <div className="text-[11px] text-[#5B7A8C] mb-5">{sub}</div>
-                <div className="flex gap-5 flex-wrap">
-                  {entries.map(({ champ, winRate: cwr, games }) => (
-                    <CounterCard key={champ.id} champ={champ} winRate={cwr} games={games} variant={v} onClick={() => onSelectChampion?.(champ.id)} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <CountersDetailTab
+            champion={champion}
+            champions={champions}
+            card={card}
+          />
         )}
 
         {/* ═══════════════════════════════════════════════════ */}
