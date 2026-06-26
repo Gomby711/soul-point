@@ -85,11 +85,17 @@ const MID_SUPPORT_OVERRIDE = new Set([
   "Xerath", "Vel'Koz", "Aurora", "Locke",
 ]);
 
+// Fighter/mage hybrids that primarily play Mid (protect from OP.GG position override)
+const MID_FIGHTER_OVERRIDE = new Set([
+  "Sylas",
+]);
+
 // ── Role derivation ───────────────────────────────────────────
 function deriveRole(name: string, tags: string[]): PrimaryRole {
   // Hard overrides first (most specific wins)
   if (ADC_PRIMARY.has(name))           return "ADC";
   if (MID_MARKSMAN_OVERRIDE.has(name)) return "Mid";
+  if (MID_FIGHTER_OVERRIDE.has(name))  return "Mid";
   if (TOP_PRIMARY.has(name))           return "Top";
   if (SUPPORT_PRIMARY.has(name))       return "Support";
   if (SUPPORT_OVERRIDE.has(name))      return "Support";
@@ -213,6 +219,7 @@ function mergeLiveMeta(champs: ChampionInfo[], meta: Record<string, ChampMetaEnt
     const shouldUseOverride =
       ADC_PRIMARY.has(c.name) ||
       MID_MARKSMAN_OVERRIDE.has(c.name) ||
+      MID_FIGHTER_OVERRIDE.has(c.name) ||
       TOP_PRIMARY.has(c.name) ||
       SUPPORT_PRIMARY.has(c.name) ||
       SUPPORT_OVERRIDE.has(c.name) ||
@@ -288,6 +295,7 @@ export function useChampionData() {
           const hasOverride =
             ADC_PRIMARY.has(c.name) ||
             MID_MARKSMAN_OVERRIDE.has(c.name) ||
+            MID_FIGHTER_OVERRIDE.has(c.name) ||
             TOP_PRIMARY.has(c.name) ||
             SUPPORT_PRIMARY.has(c.name) ||
             SUPPORT_OVERRIDE.has(c.name) ||

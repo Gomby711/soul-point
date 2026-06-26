@@ -1,7 +1,6 @@
-import { Flame, Crown, Users, BarChart2, Globe, Sword, ArrowUp, ArrowDown } from "lucide-react";
+import { Flame, Users, BarChart2, Globe, Sword, ArrowUp, ArrowDown } from "lucide-react";
 import { SearchBar } from "@/components/layout/SearchBar";
 import { OrnatePanel } from "@/components/common/OrnatePanel";
-import { TierBadge } from "@/components/common/TierBadge";
 import { ChampPortrait } from "@/components/common/ChampPortrait";
 import { winRateColor } from "@/lib/utils";
 import type { Region } from "@/api/types";
@@ -21,17 +20,8 @@ const HOT_PICKS = [
   { name: "Darius",  id: "Darius",  role: "Top",     winRate: 52.7, pickRate: 13.1, tier: "S",  trend: "up"   },
 ];
 
-const TOP_CHALLENGERS = [
-  { name: "Faker",    tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1847, champ: "Ahri",    champId: "Ahri"    },
-  { name: "Caps",     tag: "G2",  region: "EUW", tier: "CHALLENGER",  lp: 1623, champ: "Zed",     champId: "Zed"     },
-  { name: "Ruler",    tag: "JDG", region: "KR",  tier: "CHALLENGER",  lp: 1591, champ: "Jinx",    champId: "Jinx"    },
-  { name: "Zeus",     tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1544, champ: "Irelia",  champId: "Irelia"  },
-  { name: "BeryL",    tag: "T1",  region: "KR",  tier: "CHALLENGER",  lp: 1511, champ: "Thresh",  champId: "Thresh"  },
-  { name: "Inspired", tag: "EG",  region: "NA",  tier: "GRANDMASTER", lp: 1198, champ: "Lee Sin", champId: "LeeSin"  },
-];
-
 const TIER_COLORS: Record<string, string> = {
-  "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C",
+  SP: "#FFD700", "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C",
 };
 
 export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
@@ -94,87 +84,42 @@ export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
         </div>
       </div>
 
-      {/* ── Hot picks + Leaderboard snapshot ── */}
-      <div className="max-w-screen-xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Hot picks */}
-        <div className="md:col-span-2">
-          <div className="flex items-center gap-3 mb-4">
-            <Flame className="w-4 h-4 text-[#C89B3C]" />
-            <h2 className="font-['Cinzel'] font-bold text-sm tracking-widest text-[#C8AA6E] uppercase">Patch Hottest Picks</h2>
-            <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg,#785A28,transparent)" }} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {HOT_PICKS.map(c => (
-              <OrnatePanel key={c.name} className="p-3 hover:border-[#785A28] transition-colors cursor-pointer" onClick={() => onSelectChampion(c.id)}>
-                <div className="flex items-center gap-3">
-                  <ChampPortrait championName={c.name} size={48} ring />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-['Cinzel'] font-bold text-sm text-[#C8AA6E]">{c.name}</span>
-                      <span
-                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm"
-                        style={{ color: TIER_COLORS[c.tier], background: TIER_COLORS[c.tier] + "18" }}
-                      >
-                        {c.tier}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-[#5B7A8C] mb-1.5">{c.role}</div>
-                    <div className="flex items-center gap-3 text-[10px]">
-                      <span className="font-mono font-bold" style={{ color: winRateColor(c.winRate) }}>
-                        {c.winRate.toFixed(1)}% WR
-                      </span>
-                      <span className="text-[#5B7A8C]">PR {c.pickRate.toFixed(1)}%</span>
-                      {c.trend === "up"
-                        ? <ArrowUp className="w-3 h-3 text-[#0AC8B9]" />
-                        : <ArrowDown className="w-3 h-3 text-[#FF4E50]" />}
-                    </div>
+      {/* ── Hot picks ── */}
+      <div className="max-w-screen-xl mx-auto px-4 py-8">
+        <div className="flex items-center gap-3 mb-5">
+          <Flame className="w-4 h-4 text-[#C89B3C]" />
+          <h2 className="font-['Cinzel'] font-bold text-sm tracking-widest text-[#C8AA6E] uppercase">Patch Hottest Picks</h2>
+          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg,#785A28,transparent)" }} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {HOT_PICKS.map(c => (
+            <OrnatePanel key={c.name} className="p-4 hover:border-[#785A28] transition-colors cursor-pointer" onClick={() => onSelectChampion(c.id)}>
+              <div className="flex items-center gap-4">
+                <ChampPortrait championName={c.name} size={60} ring />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-['Cinzel'] font-bold text-base text-[#C8AA6E]">{c.name}</span>
+                    <span
+                      className="text-[11px] font-bold px-1.5 py-0.5 rounded-sm"
+                      style={{ color: TIER_COLORS[c.tier], background: TIER_COLORS[c.tier] + "18" }}
+                    >
+                      {c.tier}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-[#5B7A8C] mb-2">{c.role}</div>
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="font-mono font-bold" style={{ color: winRateColor(c.winRate) }}>
+                      {c.winRate.toFixed(1)}% WR
+                    </span>
+                    <span className="text-[#5B7A8C]">PR {c.pickRate.toFixed(1)}%</span>
+                    {c.trend === "up"
+                      ? <ArrowUp className="w-3.5 h-3.5 text-[#0AC8B9]" />
+                      : <ArrowDown className="w-3.5 h-3.5 text-[#FF4E50]" />}
                   </div>
                 </div>
-              </OrnatePanel>
-            ))}
-          </div>
-        </div>
-
-        {/* Leaderboard mini */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <Crown className="w-4 h-4 text-[#C89B3C]" />
-            <h2 className="font-['Cinzel'] font-bold text-sm tracking-widest text-[#C8AA6E] uppercase">Top NA Challengers</h2>
-            <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg,#785A28,transparent)" }} />
-          </div>
-          <OrnatePanel className="overflow-hidden" accent>
-            {TOP_CHALLENGERS.map((p, i) => (
-              <div
-                key={p.name}
-                className="flex items-center gap-2 px-3 py-2 border-b border-[#1E2D3D] hover:bg-[#0A1428] transition-colors cursor-pointer"
-                onClick={() => onSearch(p.name, p.tag, p.region as Region)}
-              >
-                <span
-                  className="font-['Cinzel'] font-bold text-xs w-5 text-center"
-                  style={{ color: i < 3 ? "#C89B3C" : "#5B7A8C" }}
-                >
-                  {i < 3 ? ["①", "②", "③"][i] : i + 1}
-                </span>
-                <button
-                  className="shrink-0"
-                  title={`View ${p.champ} build`}
-                  onClick={e => { e.stopPropagation(); onSelectChampion(p.champId); }}
-                >
-                  <ChampPortrait championName={p.champ} size={28} />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="font-['Cinzel'] text-xs text-white">{p.name}</div>
-                  <div className="text-[10px] text-[#A0B4C8]">{p.region} · {p.lp.toLocaleString()} LP</div>
-                </div>
-                <TierBadge tier={p.tier} small />
               </div>
-            ))}
-            <div className="px-3 py-2 text-center">
-              <span className="text-[10px] font-['Cinzel'] tracking-widest text-[#5B7A8C] cursor-pointer hover:text-[#C89B3C] transition-colors">
-                VIEW FULL LEADERBOARD →
-              </span>
-            </div>
-          </OrnatePanel>
+            </OrnatePanel>
+          ))}
         </div>
       </div>
     </div>

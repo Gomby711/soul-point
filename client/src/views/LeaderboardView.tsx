@@ -219,15 +219,15 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                 No data available for {region} {tier}
               </div>
             )}
-            <table className="w-full text-xs">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#785A28]/40">
                   {["Rank", "Summoner", "Tier", "LP", "W / L", "Win Rate", "Status"].map(h => (
                     <th key={h}
-                      className={`px-4 py-3 font-['Cinzel'] tracking-wider text-[#785A28] uppercase ${
+                      className={`px-4 py-3.5 font-['Cinzel'] tracking-wider text-[#785A28] uppercase ${
                         h === "Rank" || h === "Summoner" ? "text-left" : "text-center"
                       }`}
-                      style={{ fontSize: 10 }}>
+                      style={{ fontSize: 11 }}>
                       {h}
                     </th>
                   ))}
@@ -246,16 +246,16 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       onClick={() => handlePlayerClick(e)}
                     >
                       {/* Rank */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
                           {isTop3 && (
-                            <div className="w-5 h-5 flex items-center justify-center text-xs"
+                            <div className="w-5 h-5 flex items-center justify-center text-sm"
                               style={{ color: ["#F4E070", "#C89B3C", "#A0522D"][e.rank - 1] }}>
                               {["①", "②", "③"][e.rank - 1]}
                             </div>
                           )}
                           <span
-                            className="font-['Cinzel'] font-bold text-sm"
+                            className="font-['Cinzel'] font-bold text-base"
                             style={{ color: isTop3 ? col : "#5B7A8C" }}>
                             #{e.rank}
                           </span>
@@ -263,31 +263,31 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       </td>
 
                       {/* Summoner */}
-                      <td className="px-4 py-2">
-                        <span className="font-['Cinzel'] text-white">
+                      <td className="px-4 py-4">
+                        <span className="font-['Cinzel'] text-base text-white">
                           {e.summonerName}
                         </span>
                       </td>
 
                       {/* Tier */}
-                      <td className="px-4 py-3 text-center">
-                        <TierBadge tier={e.tier} small />
+                      <td className="px-4 py-4 text-center">
+                        <TierBadge tier={e.tier} />
                       </td>
 
                       {/* LP */}
-                      <td className="px-4 py-3 text-center">
-                        <div className="font-mono font-bold text-sm" style={{ color: col }}>
+                      <td className="px-4 py-4 text-center">
+                        <div className="font-mono font-bold text-base" style={{ color: col }}>
                           {e.lp.toLocaleString()}
                         </div>
-                        <div className="text-[9px] text-[#5B7A8C]">LP</div>
+                        <div className="text-[10px] text-[#5B7A8C]">LP</div>
                       </td>
 
                       {/* W / L */}
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-4 text-center">
                         <div>
-                          <span className="text-[#0AC8B9] font-mono">{e.wins}W</span>
+                          <span className="text-[#0AC8B9] font-mono text-sm">{e.wins}W</span>
                           <span className="text-[#3A4A5A] mx-1">/</span>
-                          <span className="text-[#FF4E50] font-mono">{e.losses}L</span>
+                          <span className="text-[#FF4E50] font-mono text-sm">{e.losses}L</span>
                         </div>
                         <div className="w-24 mx-auto mt-1">
                           <WinRateBar wins={e.wins} losses={e.losses} />
@@ -295,29 +295,29 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       </td>
 
                       {/* Win Rate */}
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-mono font-bold text-sm" style={{ color: winRateColor(wr) }}>
+                      <td className="px-4 py-4 text-center">
+                        <span className="font-mono font-bold text-base" style={{ color: winRateColor(wr) }}>
                           {wr}%
                         </span>
                       </td>
 
                       {/* Status */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-1 flex-wrap">
                           {e.hotStreak && (
-                            <span className="flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 font-['Cinzel']"
+                            <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 font-['Cinzel']"
                               style={{ background: "#FF4E5015", color: "#FF4E50", border: "1px solid #FF4E5040" }}>
-                              <Flame className="w-2 h-2" />HOT
+                              <Flame className="w-2.5 h-2.5" />HOT
                             </span>
                           )}
                           {e.veteran && (
-                            <span className="text-[8px] px-1.5 py-0.5 font-['Cinzel']"
+                            <span className="text-[9px] px-1.5 py-0.5 font-['Cinzel']"
                               style={{ background: "#C89B3C15", color: "#C89B3C", border: "1px solid #C89B3C40" }}>
                               VET
                             </span>
                           )}
                           {e.freshBlood && (
-                            <span className="text-[8px] px-1.5 py-0.5 font-['Cinzel']"
+                            <span className="text-[9px] px-1.5 py-0.5 font-['Cinzel']"
                               style={{ background: "#0AC8B915", color: "#0AC8B9", border: "1px solid #0AC8B940" }}>
                               NEW
                             </span>
