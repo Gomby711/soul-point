@@ -1,16 +1,5 @@
 import { useState, useEffect } from "react";
 import { Crown, Flame } from "lucide-react";
-
-function RankEmblem({ tier, size = 32 }: { tier: string; size?: number }) {
-  const src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
-  const imgSize = Math.round(size * 1.45);
-  return (
-    <div style={{ width: size, height: size }} className="shrink-0 overflow-hidden flex items-center justify-center">
-      <img src={src} width={imgSize} height={imgSize} className="object-contain shrink-0"
-        onError={e => { (e.target as HTMLImageElement).style.opacity = "0.2"; }} />
-    </div>
-  );
-}
 import { OrnatePanel } from "@/components/common/OrnatePanel";
 import { TierBadge } from "@/components/common/TierBadge";
 import { WinRateBar } from "@/components/common/WinRateBar";
@@ -46,6 +35,7 @@ interface LeaderboardEntry {
   freshBlood: boolean;
 }
 
+const PLACEHOLDER_RE = /^Player \d+LP$/;
 
 export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: string, region: Region) => void }) {
   const [region, setRegion]       = useState<Region>("NA");
@@ -54,12 +44,15 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [clickingPuuid, setClickingPuuid] = useState<string | null>(null);
+  // puuid → resolved display name
+  const [resolvedNames, setResolvedNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setEntries([]);
+    setResolvedNames({});
 
     fetchLeaderboard(region, tier)
       .then(data => {
@@ -90,6 +83,33 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
     return () => { cancelled = true; };
   }, [region, tier]);
 
+  // Background-resolve real names for placeholder entries
+  useEffect(() => {
+    const toResolve = entries.filter(e => e.puuid && PLACEHOLDER_RE.test(e.summonerName));
+    if (toResolve.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      for (const entry of toResolve) {
+        if (cancelled || !entry.puuid) break;
+        try {
+          const { gameName } = await fetchRiotIdByPuuid(entry.puuid, region);
+          if (!cancelled && gameName) {
+            setResolvedNames(prev => ({ ...prev, [entry.puuid!]: gameName }));
+          }
+        } catch { /* skip unresolvable */ }
+        // Small delay to avoid hitting API rate limits
+        await new Promise(r => setTimeout(r, 120));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [entries, region]);
+
+  function displayName(e: LeaderboardEntry): string {
+    return (e.puuid && resolvedNames[e.puuid]) || e.summonerName;
+  }
+
   async function handlePlayerClick(entry: LeaderboardEntry) {
     if (clickingPuuid) return;
     if (entry.puuid) {
@@ -98,17 +118,16 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
         const { gameName, tagLine } = await fetchRiotIdByPuuid(entry.puuid, region);
         onSearch(gameName, tagLine, region);
       } catch {
-        onSearch(entry.summonerName, REGION_DEFAULT_TAG[region], region);
+        onSearch(displayName(entry), REGION_DEFAULT_TAG[region], region);
       } finally {
         setClickingPuuid(null);
       }
     } else {
-      onSearch(entry.summonerName, REGION_DEFAULT_TAG[region], region);
+      onSearch(displayName(entry), REGION_DEFAULT_TAG[region], region);
     }
   }
 
   const topThree = entries.length >= 3 ? entries.slice(0, 3) : null;
-  const tierMeta = TIER_META[tier];
 
   // Podium order: 2nd, 1st, 3rd
   const podium = topThree
@@ -173,7 +192,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
         </div>
       </OrnatePanel>
 
-      {/* Podium top 3 */}
+      {/* Podium top 3 — no rank icons, real names */}
       {!loading && podium && (
         <div className="grid grid-cols-3 gap-3 mb-6">
           {podium.map((player, podiumIdx) => {
@@ -183,6 +202,8 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
             const col = ["#C89B3C", "#F4E070", "#A0522D"][displayRank - 1];
             const total = (player.wins + player.losses) || 1;
             const wr = Math.round((player.wins / total) * 100);
+            const name = displayName(player);
+            const isPlaceholder = PLACEHOLDER_RE.test(player.summonerName) && !resolvedNames[player.puuid ?? ''];
             return (
               <OrnatePanel
                 key={player.rank}
@@ -190,15 +211,15 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                 accent={isFirst}
                 onClick={() => handlePlayerClick(player)}
               >
-                <div className="font-['Cinzel'] font-black text-3xl mb-2" style={{ color: col }}>
+                <div className="font-['Cinzel'] font-black text-3xl mb-3" style={{ color: col }}>
                   {["②", "①", "③"][podiumIdx]}
                 </div>
-                <div className={`mx-auto mb-2 flex items-center justify-center overflow-hidden ${isFirst ? "w-44 h-44" : "w-36 h-36"}`}
-                  style={{ filter: `drop-shadow(0 0 6px ${col}66)` }}>
-                  <RankEmblem tier={player.tier} size={isFirst ? 176 : 144} />
+                <div className="font-['Cinzel'] font-bold text-sm text-white mb-1">
+                  {isPlaceholder ? (
+                    <span className="text-[#3A4A5A] animate-pulse">Resolving...</span>
+                  ) : name}
                 </div>
-                <div className="font-['Cinzel'] font-bold text-xs text-white">{player.summonerName}</div>
-                <div className="font-mono text-xs mt-1 font-bold" style={{ color: col }}>
+                <div className="font-mono text-xs font-bold mb-2" style={{ color: col }}>
                   {player.lp.toLocaleString()} LP
                 </div>
                 <TierBadge tier={player.tier} small />
@@ -254,6 +275,8 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                   const wr    = Math.round((e.wins / total) * 100);
                   const isTop3 = e.rank <= 3;
                   const col   = rankColor(e.tier);
+                  const name  = displayName(e);
+                  const isPlaceholder = PLACEHOLDER_RE.test(e.summonerName) && !resolvedNames[e.puuid ?? ''];
                   return (
                     <tr
                       key={`${e.rank}-${e.summonerName}`}
@@ -279,11 +302,9 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
 
                       {/* Summoner */}
                       <td className="px-4 py-2">
-                        <div className="flex items-center gap-3">
-                          <span className="font-['Cinzel'] text-white">
-                            {e.summonerName}
-                          </span>
-                        </div>
+                        <span className={`font-['Cinzel'] text-white ${isPlaceholder ? "text-[#3A4A5A]" : ""}`}>
+                          {isPlaceholder ? "..." : name}
+                        </span>
                       </td>
 
                       {/* Tier */}

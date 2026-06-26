@@ -259,8 +259,8 @@ function RecentGamesSummary({ matches, puuid }: { matches: Match[]; puuid: strin
 // ─── Expanded Match Detail Panel ──────────────────────────────────────────────
 
 function MatchDetailPanel({
-  match, puuid, ver, runeMap,
-}: { match: Match; puuid: string; ver: string; runeMap: Map<number, string> }) {
+  match, puuid, ver, runeMap, region, onSearch,
+}: { match: Match; puuid: string; ver: string; runeMap: Map<number, string>; region: string; onSearch: (name: string, tag: string, region: import("@/api/types").Region) => void }) {
   const [activeTab, setActiveTab] = useState<"overview" | "build">("overview");
 
   const participants = match.info?.participants ?? [];
@@ -359,9 +359,17 @@ function MatchDetailPanel({
                         <RuneIcon perkId={keystoneId} runeMap={runeMap} size={15} />
                         <div className="min-w-0 ml-1">
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className={`text-[11px] font-['Cinzel'] ${isMe ? "text-[#C8AA6E] font-bold" : "text-[#E0E8F0]"}`}>
+                            <button
+                              className={`text-[11px] font-['Cinzel'] hover:underline cursor-pointer text-left ${isMe ? "text-[#C8AA6E] font-bold" : "text-[#E0E8F0]"}`}
+                              onClick={e => {
+                                e.stopPropagation();
+                                const gn = p.riotIdGameName || p.summonerName || name;
+                                const tl = p.riotIdTagline || "NA1";
+                                if (gn) onSearch(gn, tl, region as import("@/api/types").Region);
+                              }}
+                            >
                               {name}
-                            </span>
+                            </button>
                             {isMvp && (
                               <span className="text-[8px] px-1 py-0.5 font-bold shrink-0"
                                 style={{ background: "#C89B3C22", color: "#C89B3C", border: "1px solid #C89B3C44" }}>
@@ -453,10 +461,11 @@ function MatchDetailPanel({
 // ─── Match Row (compact + expandable) ────────────────────────────────────────
 
 function MatchRow({
-  match, puuid, ver, runeMap, expanded, onToggle,
+  match, puuid, ver, runeMap, expanded, onToggle, region, onSearch,
 }: {
   match: Match; puuid: string; ver: string;
   runeMap: Map<number, string>; expanded: boolean; onToggle: () => void;
+  region: string; onSearch: (name: string, tag: string, region: import("@/api/types").Region) => void;
 }) {
   if (!match?.info?.participants) return null;
   const me = match.info.participants.find(p => p.puuid === puuid);
@@ -538,21 +547,31 @@ function MatchRow({
         {/* 5v5 player names */}
         <div className="hidden xl:flex gap-1.5 ml-auto shrink-0">
           <div className="flex flex-col gap-px w-[90px]">
-            {blue.map(p => (
-              <div key={p.puuid}
-                className={`text-[9px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-white"}`}>
-                {p.riotIdGameName || p.summonerName || "?"}
-              </div>
-            ))}
+            {blue.map(p => {
+              const pName = p.riotIdGameName || p.summonerName || "?";
+              const isMe = p.puuid === puuid;
+              return (
+                <button key={p.puuid}
+                  className={`text-[9px] text-left hover:underline cursor-pointer ${isMe ? "text-[#C8AA6E] font-bold" : "text-white"}`}
+                  onClick={e => { e.stopPropagation(); if (pName !== "?") onSearch(pName, p.riotIdTagline || "NA1", region as import("@/api/types").Region); }}>
+                  {pName}
+                </button>
+              );
+            })}
           </div>
           <div className="w-px bg-[#1E2D3D] self-stretch" />
           <div className="flex flex-col gap-px w-[90px]">
-            {red.map(p => (
-              <div key={p.puuid}
-                className={`text-[9px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-white"}`}>
-                {p.riotIdGameName || p.summonerName || "?"}
-              </div>
-            ))}
+            {red.map(p => {
+              const pName = p.riotIdGameName || p.summonerName || "?";
+              const isMe = p.puuid === puuid;
+              return (
+                <button key={p.puuid}
+                  className={`text-[9px] text-left hover:underline cursor-pointer ${isMe ? "text-[#C8AA6E] font-bold" : "text-white"}`}
+                  onClick={e => { e.stopPropagation(); if (pName !== "?") onSearch(pName, p.riotIdTagline || "NA1", region as import("@/api/types").Region); }}>
+                  {pName}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -563,7 +582,7 @@ function MatchRow({
       </div>
 
       {expanded && (
-        <MatchDetailPanel match={match} puuid={puuid} ver={ver} runeMap={runeMap} />
+        <MatchDetailPanel match={match} puuid={puuid} ver={ver} runeMap={runeMap} region={region} onSearch={onSearch} />
       )}
     </div>
   );
@@ -598,16 +617,16 @@ function RankSidebarCard({ label, entry }: { label: string; entry: LeagueEntry |
         <div className="text-[9px] text-[#5B7A8C] font-mono">{entry.wins}W {entry.losses}L</div>
       </div>
 
-      <div className="flex flex-col items-center mb-1">
-        <RankEmblem tier={entry.tier} size={240} />
-        <div className="text-center mt-0.5">
-          <div className="font-['Cinzel'] font-black text-lg" style={{ color: col }}>
-            {tierLabel} {entry.rank}
-          </div>
-          <div className="font-mono text-sm text-[#C89B3C]">{entry.leaguePoints} LP</div>
-          <div className="text-[10px] text-[#5B7A8C]">
-            Win rate <span style={{ color: winRateColor(wr) }}>{wr}%</span>
-          </div>
+      <div className="-mx-4 overflow-hidden flex items-center justify-center">
+        <RankEmblem tier={entry.tier} size={280} />
+      </div>
+      <div className="text-center mt-1">
+        <div className="font-['Cinzel'] font-black text-lg" style={{ color: col }}>
+          {tierLabel} {entry.rank}
+        </div>
+        <div className="font-mono text-sm text-[#C89B3C]">{entry.leaguePoints} LP</div>
+        <div className="text-[10px] text-[#5B7A8C]">
+          Win rate <span style={{ color: winRateColor(wr) }}>{wr}%</span>
         </div>
       </div>
 
@@ -683,13 +702,13 @@ function TFTSidebarCard({ tft }: { tft: { tier: string; rank: string; lp: number
         <div className="text-[11px] font-['Cinzel'] font-bold text-[#C8AA6E]">TFT Ranked</div>
         <Crown className="w-3.5 h-3.5" style={{ color: col }} />
       </div>
-      <div className="flex flex-col items-center mb-1">
-        <RankEmblem tier={tft.tier} size={220} />
-        <div className="text-center mt-2">
-          <div className="font-['Cinzel'] font-bold text-sm" style={{ color: col }}>{tft.tier} {tft.rank}</div>
-          <div className="font-mono text-xs text-[#C89B3C]">{tft.lp} LP</div>
-          <div className="text-[9px] text-[#5B7A8C]">WR <span style={{ color: winRateColor(wr) }}>{wr}%</span></div>
-        </div>
+      <div className="-mx-4 overflow-hidden flex items-center justify-center">
+        <RankEmblem tier={tft.tier} size={280} />
+      </div>
+      <div className="text-center mt-2">
+        <div className="font-['Cinzel'] font-bold text-sm" style={{ color: col }}>{tft.tier} {tft.rank}</div>
+        <div className="font-mono text-xs text-[#C89B3C]">{tft.lp} LP</div>
+        <div className="text-[9px] text-[#5B7A8C]">WR <span style={{ color: winRateColor(wr) }}>{wr}%</span></div>
       </div>
       <WinRateBar wins={tft.wins} losses={tft.losses} />
     </OrnatePanel>
@@ -949,7 +968,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
                   </div>
                 </div>
                 <div className="pt-2 min-w-0">
-                  <h1 className="font-['Cinzel'] font-black text-base text-white">{state.gameName}</h1>
+                  <h1 className="font-['Cinzel'] font-black text-base" style={{ color: "#ffffff" }}>{state.gameName}</h1>
                   <div className="text-[11px] text-[#C8AA6E] font-['Cinzel'] font-bold">#{state.tagLine}</div>
                   <div className="text-[10px] text-[#A0B4C8]">{region}</div>
                 </div>
@@ -1018,6 +1037,8 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
                         onToggle={() => setExpandedId(
                           expandedId === m.metadata.matchId ? null : m.metadata.matchId,
                         )}
+                        region={region}
+                        onSearch={onSearch}
                       />
                     ))}
                     {filteredMatches.length === 0 && (
