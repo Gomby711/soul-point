@@ -400,6 +400,10 @@ async function runCrawl(opts: CrawlJob) {
         await savePositionStats(positions);
         await saveCrawledMatches(crawled);
         crawlStatus.champsCovered = Object.keys(stats).length;
+        crawlStatus.champsAtTarget = Object.values(stats).filter(builds => {
+          const total = Object.values(builds).reduce((s, b) => s + b.wins + b.losses, 0);
+          return total >= MIN_GAMES_PER_CHAMP;
+        }).length;
         crawlStatus.matchesInDB = crawled.size;
       }
     } catch (e) {

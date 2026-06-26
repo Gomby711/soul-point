@@ -328,33 +328,98 @@ function useCounters(champion: ChampionInfo, champions: ChampionInfo[]) {
   return { weakAgainst, strongAgainst };
 }
 
-// ── Jungle camp icons ──────────────────────────────────────────
-const CAMPS: Record<string, { label: string; color: string; url: string }> = {
-  Blue:    { label: "Blue",  color: "#3A7BD5", url: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/minimap_icon_bluebuff.png" },
-  Gromp:   { label: "Gromp", color: "#3E7A3B", url: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/minimap_icon_gromp.png" },
-  Wolves:  { label: "Wolf",  color: "#7A8EA0", url: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/minimap_icon_wolf.png" },
-  Raptors: { label: "Raps",  color: "#C47820", url: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/minimap_icon_razorbeak.png" },
-  Red:     { label: "Red",   color: "#C83030", url: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/minimap_icon_redbuff.png" },
-  Krugs:   { label: "Krug",  color: "#8B5E3C", url: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/minimap_icon_krug.png" },
+// ── Jungle camp icons (inline SVG — no external CDN needed) ───
+const CAMPS: Record<string, { label: string; color: string }> = {
+  Blue:    { label: "Blue Buff",  color: "#3A7BD5" },
+  Gromp:   { label: "Gromp",      color: "#4A9B47" },
+  Wolves:  { label: "Wolves",     color: "#7A8EA0" },
+  Raptors: { label: "Raptors",    color: "#C47820" },
+  Red:     { label: "Red Buff",   color: "#C83030" },
+  Krugs:   { label: "Krugs",      color: "#9B7040" },
 };
 const BLUE_PATH = ["Blue", "Gromp", "Wolves", "Raptors", "Red", "Krugs"];
 const RED_PATH  = ["Red",  "Krugs", "Raptors", "Wolves",  "Blue", "Gromp"];
 
+function CampSvgIcon({ camp }: { camp: string }) {
+  switch (camp) {
+    case "Blue":
+      return (
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+          <polygon points="12,2 19,9 16,20 8,20 5,9" fill="#3A7BD5" opacity="0.25" stroke="#3A7BD5" strokeWidth="1.2"/>
+          <polygon points="12,5 16,10 14,17 10,17 8,10" fill="#5A9BFF" opacity="0.7"/>
+          <circle cx="12" cy="11" r="2.5" fill="#A0CFFF" opacity="0.9"/>
+        </svg>
+      );
+    case "Gromp":
+      return (
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+          <ellipse cx="12" cy="14" rx="7" ry="5.5" fill="#4A9B47" opacity="0.8"/>
+          <circle cx="9"  cy="9"  r="3"   fill="#4A9B47" opacity="0.9"/>
+          <circle cx="15" cy="9"  r="3"   fill="#4A9B47" opacity="0.9"/>
+          <circle cx="9"  cy="8.5" r="1.2" fill="#A0FFA0" opacity="0.9"/>
+          <circle cx="15" cy="8.5" r="1.2" fill="#A0FFA0" opacity="0.9"/>
+          <path d="M9 17 L7 20 M15 17 L17 20" stroke="#4A9B47" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      );
+    case "Wolves":
+      return (
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+          <ellipse cx="12" cy="15" rx="5" ry="4" fill="#7A8EA0" opacity="0.8"/>
+          <circle cx="8.5"  cy="9"  r="2.2" fill="#7A8EA0" opacity="0.85"/>
+          <circle cx="12"   cy="7.5" r="2.2" fill="#7A8EA0" opacity="0.85"/>
+          <circle cx="15.5" cy="9"  r="2.2" fill="#7A8EA0" opacity="0.85"/>
+          <circle cx="8.5"  cy="8.8" r="0.9" fill="#C0D4E0"/>
+          <circle cx="12"   cy="7.3" r="0.9" fill="#C0D4E0"/>
+          <circle cx="15.5" cy="8.8" r="0.9" fill="#C0D4E0"/>
+        </svg>
+      );
+    case "Raptors":
+      return (
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+          <path d="M12 3 L9 13 L12 11 L15 13 Z" fill="#C47820" opacity="0.9"/>
+          <path d="M9 13 L6.5 19" stroke="#C47820" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M12 11 L12 18" stroke="#C47820" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M15 13 L17.5 19" stroke="#C47820" strokeWidth="2.2" strokeLinecap="round"/>
+          <circle cx="12" cy="3" r="1.5" fill="#E09040"/>
+        </svg>
+      );
+    case "Red":
+      return (
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+          <path d="M12 21 C7 17 6 11 9.5 7.5 C9 11 11 12.5 12 12.5 C13 10.5 13.5 8 12 4.5 C16 8 18 14 12 21Z"
+            fill="#C83030" opacity="0.9"/>
+          <path d="M12 21 C7 17 6 11 9.5 7.5 C9 11 11 12.5 12 12.5 C13 10.5 13.5 8 12 4.5 C16 8 18 14 12 21Z"
+            fill="#FF7070" opacity="0.35"/>
+          <circle cx="12" cy="13" r="1.5" fill="#FFB0B0" opacity="0.8"/>
+        </svg>
+      );
+    case "Krugs":
+      return (
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+          <polygon points="12,3 20,8 18,19 6,19 4,8" fill="#9B7040" opacity="0.7" stroke="#9B7040" strokeWidth="0.8"/>
+          <polygon points="12,6 17,10 15.5,17 8.5,17 7,10" fill="#C4924A" opacity="0.55"/>
+          <polygon points="12,8 15,11 14,15 10,15 9,11" fill="#E0B070" opacity="0.4"/>
+          <circle cx="9.5" cy="10" r="1" fill="#D4A060" opacity="0.9"/>
+          <circle cx="14.5" cy="10" r="1" fill="#D4A060" opacity="0.9"/>
+        </svg>
+      );
+    default:
+      return <span className="text-[9px] font-bold">{camp.slice(0, 4)}</span>;
+  }
+}
+
 function CampDot({ camp }: { camp: string }) {
-  const def = CAMPS[camp] ?? { label: camp.slice(0, 4), color: "#5B7A8C", url: "" };
-  const [ok, setOk] = useState(true);
+  const def = CAMPS[camp] ?? { label: camp, color: "#5B7A8C" };
   return (
     <div className="group relative shrink-0">
-      <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 text-[9px] font-bold"
-        style={{ borderColor: def.color, background: def.color + "22", color: def.color }}>
-        {ok && def.url
-          ? <img src={def.url} alt={camp} className="w-7 h-7 object-contain" onError={() => setOk(false)} />
-          : def.label}
+      <div className="w-11 h-11 rounded-full flex items-center justify-center border-2"
+        style={{ borderColor: def.color, background: def.color + "18" }}>
+        <CampSvgIcon camp={camp} />
       </div>
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-[#010A13] border
         border-[#1E2D3D] px-2 py-0.5 text-[10px] text-[#C8AA6E] whitespace-nowrap
         opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-        {camp}
+        {def.label}
       </div>
     </div>
   );

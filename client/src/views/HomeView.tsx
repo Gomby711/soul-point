@@ -160,7 +160,7 @@ export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
         <div>
           <div className="flex items-center gap-3 mb-4">
             <Crown className="w-4 h-4 text-[#C89B3C]" />
-            <h2 className="font-['Cinzel'] font-bold text-sm tracking-widest text-[#C8AA6E] uppercase">Top Challengers</h2>
+            <h2 className="font-['Cinzel'] font-bold text-sm tracking-widest text-[#C8AA6E] uppercase">Top NA Challengers</h2>
             <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg,#785A28,transparent)" }} />
           </div>
           <OrnatePanel className="overflow-hidden" accent>
