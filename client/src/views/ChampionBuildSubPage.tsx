@@ -1582,7 +1582,10 @@ export function ChampionBuildSubPage({ champion, champions, onBack, onSelectCham
   }, [opggMultiBuilds, champions, fallbackWeak, fallbackStrong]);
 
   const isJungler = champion.primaryRole === "Jungle";
-  const patch     = version.split(".").slice(0, 2).join(".");
+  const patchParts = version.split(".");
+  const ddrMajor  = parseInt(patchParts[0] ?? "16", 10);
+  const dispMajor = ddrMajor >= 15 ? ddrMajor + 10 : ddrMajor;
+  const patch     = `${dispMajor}.${patchParts[1] ?? "13"}`;
   const tierColor = TIER_COLORS[champion.tier] ?? "#A0B4C8";
 
   if (!build) {

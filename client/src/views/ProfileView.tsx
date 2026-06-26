@@ -594,7 +594,7 @@ function RankSidebarCard({ label, entry }: { label: string; entry: LeagueEntry |
       </div>
 
       <div className="flex items-center gap-3 mb-3">
-        <RankEmblem tier={entry.tier} size={192} />
+        <RankEmblem tier={entry.tier} size={384} />
         <div>
           <div className="font-['Cinzel'] font-black text-base" style={{ color: col }}>
             {tierLabel} {entry.rank}
@@ -679,7 +679,7 @@ function TFTSidebarCard({ tft }: { tft: { tier: string; rank: string; lp: number
         <Crown className="w-3.5 h-3.5" style={{ color: col }} />
       </div>
       <div className="flex items-center gap-3 mb-2">
-        <RankEmblem tier={tft.tier} size={160} />
+        <RankEmblem tier={tft.tier} size={320} />
 
         <div>
           <div className="font-['Cinzel'] font-bold text-sm" style={{ color: col }}>{tft.tier} {tft.rank}</div>

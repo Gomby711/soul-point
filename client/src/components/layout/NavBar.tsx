@@ -43,39 +43,39 @@ export function NavBar({ view, setView }: NavBarProps) {
         className="h-px w-full"
         style={{ background: "linear-gradient(90deg,transparent,#785A28 30%,#C89B3C 50%,#785A28 70%,transparent)" }}
       />
-      <div className="w-full px-6 h-16 flex items-center">
-        {/* Logo — far left */}
-        <button onClick={() => setView("home")} className="flex items-center gap-2.5 shrink-0">
-          <div className="relative w-8 h-8">
+      <div className="w-full px-8 flex items-center" style={{ height: "72px" }}>
+        {/* Logo — absolute far left */}
+        <button onClick={() => setView("home")} className="flex items-center gap-3 shrink-0">
+          <div className="relative w-10 h-10">
             <div
               className="hex-clip w-full h-full flex items-center justify-center"
               style={{ background: "linear-gradient(135deg,#C89B3C,#785A28)" }}
             >
-              <Zap className="w-4 h-4 text-[#010A13]" />
+              <Zap className="w-5 h-5 text-[#010A13]" />
             </div>
           </div>
-          <span className="font-['Cinzel'] font-bold text-xl gold-text tracking-widest">
+          <span className="font-['Cinzel'] font-black text-2xl gold-text tracking-widest">
             SOUL<span className="text-[#A0B4C8]">POINT</span>
           </span>
         </button>
 
-        {/* Nav links + badges — far right */}
-        <div className="ml-auto flex items-center gap-1">
+        {/* Nav links + badges pushed to far right */}
+        <div className="ml-auto flex items-center gap-0">
           {/* Nav links — desktop */}
-          <nav className="hidden md:flex items-center gap-0.5">
+          <nav className="hidden md:flex items-center">
             {LINKS.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 onClick={() => setView(id)}
-                className={`group flex items-center gap-2 px-5 py-2.5 text-sm font-['Cinzel'] tracking-widest transition-all relative ${
+                className={`group flex items-center gap-2 px-6 py-3 text-base font-['Cinzel'] tracking-widest transition-all relative ${
                   view === id ? "text-[#C89B3C]" : "text-[#5B7A8C] hover:text-[#A0B4C8]"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-5 h-5" />
                 {label}
                 {view === id && (
                   <div
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
+                    className="absolute bottom-0 left-0 right-0 h-[3px]"
                     style={{ background: "linear-gradient(90deg,transparent,#C89B3C,transparent)" }}
                   />
                 )}
@@ -84,22 +84,24 @@ export function NavBar({ view, setView }: NavBarProps) {
           </nav>
 
           {/* Divider */}
-          <div className="hidden md:block w-px h-7 bg-[#1E2D3D] mx-3" />
+          <div className="hidden md:block w-px h-8 bg-[#1E2D3D] mx-5" />
 
-          {/* Patch + Season badges */}
-          <span className="hidden sm:block text-xs font-mono font-bold text-[#C89B3C] border border-[#785A28]/60 bg-[#785A28]/10 px-3 py-1">
-            PATCH {patch}
-          </span>
-          <span className="hidden sm:block text-xs font-mono font-bold text-[#0AC8B9] border border-[#0AC8B9]/30 bg-[#0AC8B9]/5 px-3 py-1">
-            {season}
-          </span>
+          {/* Patch + Season badges — far top right */}
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="text-sm font-mono font-bold text-[#C89B3C] border border-[#785A28]/70 bg-[#785A28]/12 px-4 py-1.5 tracking-widest">
+              {patch}
+            </span>
+            <span className="text-sm font-mono font-bold text-[#0AC8B9] border border-[#0AC8B9]/40 bg-[#0AC8B9]/8 px-4 py-1.5 tracking-widest">
+              {season}
+            </span>
+          </div>
 
           {/* Mobile menu */}
           <button
-            className="md:hidden text-[#5B7A8C] hover:text-[#C89B3C] transition-colors ml-2"
+            className="md:hidden text-[#5B7A8C] hover:text-[#C89B3C] transition-colors ml-4"
             onClick={() => setMenuOpen(p => !p)}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {menuOpen
                 ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
