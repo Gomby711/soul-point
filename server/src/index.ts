@@ -10,7 +10,7 @@ import {
   getChampionStats, getChampionAbilities, getChampionPatchNote,
   getItemData, getItemPatchNote, getRuneData, getRunePatchNote,
 } from "./lol-data-mcp.js";
-import { startCrawl, queueMultiRegionCrawl, getCrawlStatus, hasApiKeyChanged, loadPositionStats } from "./crawler.js";
+import { startCrawl, queueMultiRegionCrawl, getCrawlStatus, hasApiKeyChanged, loadPositionStats, crawlQueueAdd } from "./crawler.js";
 import { getChampionBuilds, getAllBuilds, getChampionList } from "./algo.js";
 
 const app  = express();
@@ -465,6 +465,16 @@ app.post("/api/sp/crawl/start", async (req, res) => {
 
 app.get("/api/sp/crawl/status", (_, res) => {
   res.json(getCrawlStatus());
+});
+
+// Queue a region to crawl after the current crawl finishes (works even while running)
+app.post("/api/sp/crawl/queue", (req, res) => {
+  if (!requireKey(res)) return;
+  try {
+    const { region = "NA", playerCount = 300, matchesPerPlayer = 20 } = req.body as Record<string, unknown>;
+    crawlQueueAdd({ apiKey: KEY, region: String(region), playerCount: Number(playerCount), matchesPerPlayer: Number(matchesPerPlayer) });
+    res.json({ ok: true, message: `${region} queued.` });
+  } catch (e) { handleError(e, res); }
 });
 
 app.get("/api/sp/champions", async (_req, res) => {

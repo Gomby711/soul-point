@@ -197,6 +197,20 @@ async function processCrawlQueue() {
   isProcessingQueue = false;
 }
 
+// Push a region onto the queue even if a crawl is already running
+export function crawlQueueAdd(opts: {
+  apiKey: string;
+  region: string;
+  playerCount?: number;
+  matchesPerPlayer?: number;
+}) {
+  const playerCount = Math.min(opts.playerCount ?? 100, 500);
+  const matchesPerPlayer = Math.min(opts.matchesPerPlayer ?? 15, 20);
+  crawlQueue.push({ apiKey: opts.apiKey, region: opts.region, playerCount, matchesPerPlayer });
+  crawlStatus.regionsQueued = crawlQueue.map(j => j.region);
+  processCrawlQueue().catch(err => console.error("[Crawler] Queue error:", err));
+}
+
 export async function startCrawl(opts: {
   apiKey: string;
   region?: string;
