@@ -63,7 +63,7 @@ export function TierListView({ onSelectChampion }: TierListViewProps) {
   }, [champions, role]);
 
   const tiersToShow = useMemo(
-    () => tierFilter === "all" ? TIERS_DISPLAY : TIERS_DISPLAY.filter(t => t === tierFilter),
+    () => tierFilter === "all" ? TIERS_DISPLAY : TIERS_DISPLAY.filter(t => (t as string) === tierFilter),
     [tierFilter],
   );
 
