@@ -24,6 +24,9 @@ export interface BuildEntry {
 
 export type BuildStats = Record<string, Record<string, BuildEntry>>;
 
+// champion → position → game count (from teamPosition field in Riot match data)
+export type PositionStats = Record<string, Record<string, number>>;
+
 export interface CrawlStatus {
   state: "idle" | "running" | "done" | "error";
   progress: number;
@@ -96,6 +99,19 @@ async function saveCrawledMatches(set: Set<string>) {
     JSON.stringify([...set]),
     "utf-8"
   );
+}
+
+export async function loadPositionStats(): Promise<PositionStats> {
+  try {
+    const raw = await fs.readFile(path.join(DATA_DIR, "champion-positions.json"), "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+async function savePositionStats(stats: PositionStats) {
+  await fs.writeFile(path.join(DATA_DIR, "champion-positions.json"), JSON.stringify(stats), "utf-8");
 }
 
 // ── API key change detection ──────────────────────────────────
@@ -243,6 +259,7 @@ async function runCrawl(opts: CrawlJob) {
   crawlStatus.startedAt = crawlStatus.startedAt ?? Date.now();
 
   const stats = await loadBuildStats();
+  const positions = await loadPositionStats();
   const crawled = await loadCrawledMatches();
   const platUrl = platformUrl(region);
   const regUrl = regionalUrl(region);
@@ -305,6 +322,7 @@ async function runCrawl(opts: CrawlJob) {
         info: {
           participants: Array<{
             championName: string;
+            teamPosition: string;
             win: boolean;
             item0: number; item1: number; item2: number;
             item3: number; item4: number; item5: number; item6: number;
@@ -352,12 +370,20 @@ async function runCrawl(opts: CrawlJob) {
 
         if (p.win) stats[p.championName][key].wins++;
         else stats[p.championName][key].losses++;
+
+        // Track position (role/lane) counts for accurate role assignment
+        const pos = p.teamPosition?.toUpperCase();
+        if (pos && pos !== "" && pos !== "INVALID") {
+          if (!positions[p.championName]) positions[p.championName] = {};
+          positions[p.championName][pos] = (positions[p.championName][pos] ?? 0) + 1;
+        }
       }
 
       crawled.add(allMatchIds[i]);
 
       if ((i + 1) % 25 === 0) {
         await saveBuildStats(stats);
+        await savePositionStats(positions);
         await saveCrawledMatches(crawled);
         crawlStatus.champsCovered = Object.keys(stats).length;
         crawlStatus.matchesInDB = crawled.size;
@@ -411,7 +437,7 @@ async function runCrawl(opts: CrawlJob) {
         const url = `${regUrl}/lol/match/v5/matches/${extraMatchIds[i]}`;
         const match = await throttle(url, apiKey) as {
           info: { participants: Array<{
-            championName: string; win: boolean;
+            championName: string; teamPosition: string; win: boolean;
             item0: number; item1: number; item2: number;
             item3: number; item4: number; item5: number; item6: number;
             perks?: { styles: Array<{ style: number; selections: Array<{ perk: number }> }> };
@@ -433,6 +459,11 @@ async function runCrawl(opts: CrawlJob) {
           }
           if (p.win) stats[p.championName][key].wins++;
           else stats[p.championName][key].losses++;
+          const pos = p.teamPosition?.toUpperCase();
+          if (pos && pos !== "" && pos !== "INVALID") {
+            if (!positions[p.championName]) positions[p.championName] = {};
+            positions[p.championName][pos] = (positions[p.championName][pos] ?? 0) + 1;
+          }
         }
         crawled.add(extraMatchIds[i]);
       } catch { /* skip */ }
@@ -444,6 +475,7 @@ async function runCrawl(opts: CrawlJob) {
 
   // Final save
   await saveBuildStats(stats);
+  await savePositionStats(positions);
   await saveCrawledMatches(crawled);
 
   const nextQueue = crawlQueue.map(j => j.region);

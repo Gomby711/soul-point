@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getDragonVersion, fetchChampionMeta, type ChampMetaEntry } from "@/api/client";
+import { getDragonVersion, fetchChampionMeta, fetchSPPositions, type ChampMetaEntry } from "@/api/client";
 
 // ── Build archetypes ──────────────────────────────────────────
 export type BuildType =
@@ -55,7 +55,15 @@ const JUNGLE_PRIMARY = new Set([
 // Marksman-tagged champions whose PRIMARY role is ADC
 // (Ashe has "Support" secondary tag which wrongly made her Support)
 const ADC_PRIMARY = new Set([
-  "Ashe", "Corki", "Tristana", "Quinn", "Smolder",
+  "Ashe", "Tristana", "Quinn", "Smolder",
+]);
+
+// Marksman/Assassin-tagged champions who primarily play Mid (not ADC)
+const MID_MARKSMAN_OVERRIDE = new Set([
+  "Azir",    // Mage/Marksman → Mid emperor
+  "Akshan",  // Marksman/Assassin → Mid
+  "Corki",   // Marksman → predominantly Mid in high-elo
+  "Jayce",   // Fighter/Marksman → Mid/Top flex, primarily Mid in pro
 ]);
 
 // Marksman/Assassin-tagged champions who primarily play Top
@@ -75,16 +83,15 @@ const MID_SUPPORT_OVERRIDE = new Set([
 
 // ── Role derivation ───────────────────────────────────────────
 function deriveRole(name: string, tags: string[]): PrimaryRole {
-  // Hard overrides first
-  if (ADC_PRIMARY.has(name))     return "ADC";
-  if (TOP_PRIMARY.has(name))     return "Top";
-  if (SUPPORT_PRIMARY.has(name)) return "Support";
-  if (MID_SUPPORT_OVERRIDE.has(name)) return "Mid";
-  if (JUNGLE_PRIMARY.has(name))  return "Jungle";
+  // Hard overrides first (most specific wins)
+  if (ADC_PRIMARY.has(name))           return "ADC";
+  if (MID_MARKSMAN_OVERRIDE.has(name)) return "Mid";
+  if (TOP_PRIMARY.has(name))           return "Top";
+  if (SUPPORT_PRIMARY.has(name))       return "Support";
+  if (MID_SUPPORT_OVERRIDE.has(name))  return "Mid";
+  if (JUNGLE_PRIMARY.has(name))        return "Jungle";
 
   const has = (t: string) => tags.includes(t);
-  // Marksman BEFORE Support so champions with both tags (e.g. Ashe handled above)
-  // go to ADC correctly if not in an override set
   if (has("Marksman")) return "ADC";
   if (has("Support"))  return "Support";
   if (has("Assassin")) return "Mid";
@@ -92,6 +99,19 @@ function deriveRole(name: string, tags: string[]): PrimaryRole {
   if (has("Fighter"))  return "Top";
   if (has("Tank"))     return "Top";
   return "Top";
+}
+
+// Map OP.GG/Riot position strings to our PrimaryRole enum
+function positionToRole(position: string): PrimaryRole | null {
+  switch ((position ?? "").toUpperCase()) {
+    case "TOP":                   return "Top";
+    case "JUNGLE":                return "Jungle";
+    case "MID": case "MIDDLE":    return "Mid";
+    case "BOT": case "BOTTOM":
+    case "ADC": case "CARRY":     return "ADC";
+    case "SUPPORT": case "UTILITY": return "Support";
+    default: return null;
+  }
 }
 
 function deriveBuildType(name: string, tags: string[]): BuildType {
@@ -103,8 +123,9 @@ function deriveBuildType(name: string, tags: string[]): BuildType {
   }
   const has = (t: string) => tags.includes(t);
 
-  // ADC overrides
-  if (ADC_PRIMARY.has(name))    return "MARKSMAN";
+  // ADC + mid marksman overrides → both use MARKSMAN build type
+  if (ADC_PRIMARY.has(name))             return "MARKSMAN";
+  if (MID_MARKSMAN_OVERRIDE.has(name))   return "MARKSMAN";
   if (SUPPORT_PRIMARY.has(name)) {
     // Senna is an enchanter-ish support
     return "ENCHANTER";
@@ -168,21 +189,32 @@ function assignTiersByPercentile(champs: ChampionInfo[]): ChampionInfo[] {
 }
 
 function mergeLiveMeta(champs: ChampionInfo[], meta: Record<string, ChampMetaEntry>): ChampionInfo[] {
-  // Build normalized-name lookup for fast matching
   const normMeta: Record<string, ChampMetaEntry> = {};
   for (const [k, v] of Object.entries(meta)) normMeta[normName(k)] = v;
 
   return champs.map(c => {
     const live = normMeta[normName(c.name)];
     if (!live) return c;
+    // Use OP.GG's position data for role — more accurate than tag-based derivation.
+    // Our hard overrides (Azir, Akshan, etc.) already set primaryRole correctly;
+    // only apply live position for champions that aren't in an override set.
+    const liveRole = positionToRole(live.position);
+    const shouldUseOverride =
+      ADC_PRIMARY.has(c.name) ||
+      MID_MARKSMAN_OVERRIDE.has(c.name) ||
+      TOP_PRIMARY.has(c.name) ||
+      SUPPORT_PRIMARY.has(c.name) ||
+      MID_SUPPORT_OVERRIDE.has(c.name) ||
+      JUNGLE_PRIMARY.has(c.name);
     return {
       ...c,
-      winRate:  live.winRate,
-      pickRate: live.pickRate,
-      banRate:  live.banRate,
-      tier:     live.tier,
-      games:    live.games > 0 ? live.games : c.games,
-      kda:      live.kda > 0 ? String(live.kda) : c.kda,
+      winRate:     live.winRate,
+      pickRate:    live.pickRate,
+      banRate:     live.banRate,
+      tier:        live.tier,
+      games:       live.games > 0 ? live.games : c.games,
+      kda:         live.kda > 0 ? String(live.kda) : c.kda,
+      primaryRole: (!shouldUseOverride && liveRole) ? liveRole : c.primaryRole,
     };
   });
 }
@@ -196,10 +228,11 @@ export function useChampionData() {
   useEffect(() => {
     async function load() {
       try {
-        // Fetch DDragon champion list + OP.GG live meta in parallel
-        const [ver, metaRaw] = await Promise.all([
+        // Fetch DDragon champion list + OP.GG live meta + SP positions in parallel
+        const [ver, metaRaw, spPositions] = await Promise.all([
           getDragonVersion(),
           fetchChampionMeta().catch(() => ({} as Record<string, ChampMetaEntry>)),
+          fetchSPPositions().catch(() => ({} as Record<string, { primary: string; counts: Record<string, number> }>)),
         ]);
         setVersion(ver);
 
@@ -246,12 +279,25 @@ export function useChampionData() {
         const tiered = assignTiersByPercentile(noTier);
         const tierMap = new Map(tiered.map(c => [c.id, c.tier]));
 
-        const champs = withLive.map(c =>
-          hasLiveTier.has(normName(c.name)) ? c : { ...c, tier: tierMap.get(c.id) ?? "C" }
-        );
+        // Apply SP crawl positions (highest-confidence source — real high-elo match data)
+        const withPositions = withLive.map(c => {
+          // Only apply if not in a manual override set (e.g. Azir → Mid)
+          const hasOverride =
+            ADC_PRIMARY.has(c.name) ||
+            MID_MARKSMAN_OVERRIDE.has(c.name) ||
+            TOP_PRIMARY.has(c.name) ||
+            SUPPORT_PRIMARY.has(c.name) ||
+            MID_SUPPORT_OVERRIDE.has(c.name) ||
+            JUNGLE_PRIMARY.has(c.name);
+          if (hasOverride) return hasLiveTier.has(normName(c.name)) ? c : { ...c, tier: tierMap.get(c.id) ?? "C" };
+          const spPos = spPositions[c.id] ?? spPositions[c.name];
+          const spRole = spPos ? positionToRole(spPos.primary) : null;
+          const base = hasLiveTier.has(normName(c.name)) ? c : { ...c, tier: tierMap.get(c.id) ?? "C" };
+          return spRole ? { ...base, primaryRole: spRole } : base;
+        });
 
-        champs.sort((a, b) => a.name.localeCompare(b.name));
-        setChampions(champs);
+        withPositions.sort((a, b) => a.name.localeCompare(b.name));
+        setChampions(withPositions);
       } finally {
         setLoading(false);
       }

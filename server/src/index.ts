@@ -10,7 +10,7 @@ import {
   getChampionStats, getChampionAbilities, getChampionPatchNote,
   getItemData, getItemPatchNote, getRuneData, getRunePatchNote,
 } from "./lol-data-mcp.js";
-import { startCrawl, queueMultiRegionCrawl, getCrawlStatus, hasApiKeyChanged } from "./crawler.js";
+import { startCrawl, queueMultiRegionCrawl, getCrawlStatus, hasApiKeyChanged, loadPositionStats } from "./crawler.js";
 import { getChampionBuilds, getAllBuilds, getChampionList } from "./algo.js";
 
 const app  = express();
@@ -487,6 +487,20 @@ app.get("/api/sp/builds", cached(300), async (_req, res) => {
   try {
     const all = await getAllBuilds();
     res.json(all);
+  } catch (e) { handleError(e, res); }
+});
+
+// Returns the most-played position per champion from crawled high-elo matches
+// { champion: { mostPlayedPosition: string, counts: Record<string,number> } }
+app.get("/api/sp/positions", cached(600), async (_req, res) => {
+  try {
+    const raw = await loadPositionStats();
+    const result: Record<string, { primary: string; counts: Record<string, number> }> = {};
+    for (const [champ, counts] of Object.entries(raw)) {
+      const primary = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+      result[champ] = { primary, counts };
+    }
+    res.json(result);
   } catch (e) { handleError(e, res); }
 });
 

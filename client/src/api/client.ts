@@ -245,6 +245,10 @@ export function fetchSPAllBuilds(): Promise<ChampionSoulPoint[]> {
   return get("/sp/builds");
 }
 
+export function fetchSPPositions(): Promise<Record<string, { primary: string; counts: Record<string, number> }>> {
+  return get("/sp/positions");
+}
+
 // ── Champion meta stats ──────────────────────────────────────
 
 export interface ChampMetaEntry {
