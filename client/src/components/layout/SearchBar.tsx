@@ -31,7 +31,7 @@ export function SearchBar({ onSearch, compact = false, initialRegion = "NA" }: S
       <div className="relative">
         <button
           onClick={() => setShowRegions(p => !p)}
-          className="h-full px-3 flex items-center gap-1.5 border border-r-0 border-[#785A28] bg-[#0A1428] text-[#C8AA6E] text-xs font-['Cinzel'] tracking-wider hover:bg-[#1E2D3D] transition-colors whitespace-nowrap"
+          className="h-full px-3 flex items-center gap-1.5 border border-r-0 border-[#785A28] bg-[#0A1428] text-[#C8AA6E] text-xs font-['Cinzel'] tracking-wider hover:bg-[#1E2D3D] transition-colors whitespace-nowrap focus:outline-none"
         >
           <Globe className="w-3 h-3" />
           {region}
@@ -66,7 +66,7 @@ export function SearchBar({ onSearch, compact = false, initialRegion = "NA" }: S
       {/* Search button */}
       <button
         onClick={submit}
-        className="px-5 flex items-center gap-2 text-xs font-['Cinzel'] font-bold tracking-widest text-[#010A13] transition-all hover:brightness-110"
+        className="px-5 flex items-center gap-2 text-xs font-['Cinzel'] font-bold tracking-widest text-[#010A13] transition-all hover:brightness-110 focus:outline-none"
         style={{ background: "linear-gradient(135deg,#C89B3C,#785A28)" }}
       >
         <Search className="w-3.5 h-3.5" />

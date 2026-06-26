@@ -3,9 +3,10 @@ import { Crown, Flame } from "lucide-react";
 
 function RankEmblem({ tier, size = 32 }: { tier: string; size?: number }) {
   const src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
+  const imgSize = Math.round(size * 1.45);
   return (
-    <div style={{ width: size, height: size }} className="shrink-0">
-      <img src={src} width={size} height={size} className="object-contain w-full h-full"
+    <div style={{ width: size, height: size }} className="shrink-0 overflow-hidden flex items-center justify-center">
+      <img src={src} width={imgSize} height={imgSize} className="object-contain shrink-0"
         onError={e => { (e.target as HTMLImageElement).style.opacity = "0.2"; }} />
     </div>
   );
@@ -192,9 +193,9 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                 <div className="font-['Cinzel'] font-black text-3xl mb-2" style={{ color: col }}>
                   {["②", "①", "③"][podiumIdx]}
                 </div>
-                <div className={`mx-auto mb-2 flex items-center justify-center overflow-hidden ${isFirst ? "w-32 h-32" : "w-24 h-24"}`}
+                <div className={`mx-auto mb-2 flex items-center justify-center overflow-hidden ${isFirst ? "w-44 h-44" : "w-36 h-36"}`}
                   style={{ filter: `drop-shadow(0 0 6px ${col}66)` }}>
-                  <RankEmblem tier={player.tier} size={isFirst ? 128 : 96} />
+                  <RankEmblem tier={player.tier} size={isFirst ? 176 : 144} />
                 </div>
                 <div className="font-['Cinzel'] font-bold text-xs text-[#C8AA6E] truncate">{player.summonerName}</div>
                 <div className="font-mono text-xs mt-1 font-bold" style={{ color: col }}>
@@ -279,7 +280,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       {/* Summoner */}
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-3">
-                          <RankEmblem tier={e.tier} size={64} />
+                          <RankEmblem tier={e.tier} size={96} />
                           <span className="font-['Cinzel'] text-[#C8AA6E] group-hover:text-[#F0E6BE] transition-colors truncate max-w-[160px]">
                             {e.summonerName}
                           </span>

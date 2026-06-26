@@ -320,7 +320,7 @@ function MatchDetailPanel({
                 </div>
 
                 {/* Column headers (desktop) */}
-                <div className="hidden md:grid px-4 py-1.5 text-[9px] font-['Cinzel'] tracking-wider text-[#5B7A8C] uppercase border-b border-[#0D1F2D]"
+                <div className="hidden md:grid px-4 py-1.5 text-[9px] font-['Cinzel'] tracking-wider text-[#A0B4C8] uppercase border-b border-[#0D1F2D]"
                   style={{ gridTemplateColumns: "minmax(160px,2fr) 96px 130px 68px 68px 1fr" }}>
                   <span>Summoner</span>
                   <span className="text-center">KDA</span>
@@ -359,7 +359,7 @@ function MatchDetailPanel({
                         <RuneIcon perkId={keystoneId} runeMap={runeMap} size={15} />
                         <div className="min-w-0 ml-1">
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className={`text-[11px] font-['Cinzel'] truncate ${isMe ? "text-[#C8AA6E] font-bold" : "text-[#A0B4C8]"}`}>
+                            <span className={`text-[11px] font-['Cinzel'] ${isMe ? "text-[#C8AA6E] font-bold" : "text-[#E0E8F0]"}`}>
                               {name}
                             </span>
                             {isMvp && (
@@ -949,7 +949,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
                   </div>
                 </div>
                 <div className="pt-2 min-w-0">
-                  <h1 className="font-['Cinzel'] font-black text-base text-[#F0E6BE] truncate">{state.gameName}</h1>
+                  <h1 className="font-['Cinzel'] font-black text-base text-[#F0E6BE]">{state.gameName}</h1>
                   <div className="text-[11px] text-[#C8AA6E] font-['Cinzel'] font-bold">#{state.tagLine}</div>
                   <div className="text-[10px] text-[#A0B4C8]">{region}</div>
                 </div>
@@ -1238,7 +1238,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
                           { label: "Games Analyzed", value: String(g.length),       color: "#A0B4C8" },
                         ].map(row => (
                           <div key={row.label} className="flex justify-between items-center border-b border-[#1E2D3D] pb-2">
-                            <span className="text-[10px] font-['Cinzel'] tracking-wider text-[#5B7A8C] uppercase">{row.label}</span>
+                            <span className="text-[10px] font-['Cinzel'] tracking-wider text-[#C8AA6E] uppercase">{row.label}</span>
                             <div className="text-right">
                               <span className="font-mono font-bold text-sm" style={{ color: row.color }}>{row.value}</span>
                               {row.sub && <div className="text-[10px] text-[#5B7A8C]">{row.sub}</div>}
