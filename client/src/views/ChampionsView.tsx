@@ -3,7 +3,9 @@ import { Search, ArrowUp, ArrowDown } from "lucide-react";
 import { winRateColor } from "@/lib/utils";
 import { useChampionData, type ChampionInfo, type PrimaryRole } from "@/hooks/useChampionData";
 import { ChampionBuildSubPage, prefetchOPGGBuild } from "@/views/ChampionBuildSubPage";
-import { RoleIcon, RoleBadge, ROLE_COLORS } from "@/components/common/RoleIcon";
+import { RoleIcon, RoleBadge } from "@/components/common/RoleIcon";
+
+interface MatchupEntry { champ: ChampionInfo; winRate: number }
 
 // ── Role definitions ───────────────────────────────────────────
 const ROLE_TABS: (PrimaryRole | "All")[] = ["All", "Top", "Jungle", "Mid", "ADC", "Support"];
@@ -57,12 +59,24 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
     );
   }, [champions, rightRole]);
 
-  const weakAgainstMap = useMemo(() => {
-    const map: Record<string, ChampionInfo[]> = {};
+  const matchupsMap = useMemo(() => {
+    const map: Record<string, { weakAgainst: MatchupEntry[]; strongAgainst: MatchupEntry[] }> = {};
     for (const champ of rightFiltered) {
       const others = champions.filter(c => c.id !== champ.id && c.primaryRole === champ.primaryRole);
-      const sorted = [...others].sort((a, b) => champHash(champ.name + a.name) - champHash(champ.name + b.name));
-      map[champ.id] = sorted.slice(0, 3);
+
+      const sortedWeak = [...others].sort((a, b) => champHash(champ.name + a.name) - champHash(champ.name + b.name));
+      const weakAgainst = sortedWeak.slice(0, 5).map(c => ({
+        champ: c,
+        winRate: +(39 + champHash(champ.name + "ctr" + c.name) * 9).toFixed(1),
+      }));
+
+      const sortedStrong = [...others].sort((a, b) => champHash(a.name + champ.name) - champHash(b.name + champ.name));
+      const strongAgainst = sortedStrong.slice(0, 5).map(c => ({
+        champ: c,
+        winRate: +(53 + champHash(c.name + "str" + champ.name) * 10).toFixed(1),
+      }));
+
+      map[champ.id] = { weakAgainst, strongAgainst };
     }
     return map;
   }, [rightFiltered, champions]);
@@ -80,10 +94,12 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
   const handleBack = () => setSelectedId(null);
 
   // ── Conditional render: build sub-page ────────────────────
-  // This early return is AFTER all hooks, so Rules of Hooks is satisfied
+  // key={selectedChampion.id} forces remount on champion change so useState
+  // initializers read fresh from the module-level caches — instant for cached data.
   if (selectedChampion) {
     return (
       <ChampionBuildSubPage
+        key={selectedChampion.id}
         champion={selectedChampion}
         champions={champions}
         onBack={handleBack}
@@ -241,7 +257,8 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                     { label: "Win rate",    cls: "text-center w-28" },
                     { label: "Pick rate",   cls: "text-center w-24" },
                     { label: "Ban rate",    cls: "text-center w-24" },
-                    { label: "Weak against",cls: "text-center w-32" },
+                    { label: "Strong vs",   cls: "text-center w-40" },
+                    { label: "Hard counters", cls: "text-center w-40" },
                   ].map(({ label, cls }) => (
                     <th
                       key={label}
@@ -255,7 +272,7 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
               <tbody>
                 {rightFiltered.map((c, i) => {
                   const trend       = trendMap[c.id] ?? 0;
-                  const weakAgainst = weakAgainstMap[c.id] ?? [];
+                  const matchups    = matchupsMap[c.id] ?? { weakAgainst: [], strongAgainst: [] };
                   const tierColor   = TIER_COLORS[c.tier] ?? "#A0B4C8";
 
                   return (
@@ -326,18 +343,35 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                         {c.banRate.toFixed(2)}%
                       </td>
 
-                      {/* Weak against */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-center gap-2">
-                          {weakAgainst.map(wc => (
-                            <div
-                              key={wc.id}
-                              title={wc.name}
-                              className="w-10 h-10 rounded-sm overflow-hidden border border-[#1E2D3D] hover:border-[#FF4E50] transition-colors shrink-0"
-                              onClick={e => { e.stopPropagation(); handleSelectChampion(wc.id); }}
-                            >
-                              <img src={wc.imageUrl} alt={wc.name} className="w-full h-full object-cover" loading="lazy"
-                                onError={e2 => { (e2.target as HTMLImageElement).style.opacity = "0.2"; }} />
+                      {/* Strong vs */}
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          {matchups.strongAgainst.map(({ champ: mc, winRate: wr }) => (
+                            <div key={mc.id} className="flex flex-col items-center gap-0.5 cursor-pointer"
+                              title={`${mc.name} — ${wr}% WR`}
+                              onClick={e => { e.stopPropagation(); handleSelectChampion(mc.id); }}>
+                              <div className="w-6 h-6 rounded-sm overflow-hidden border border-[#0AC8B930] hover:border-[#0AC8B9] transition-colors shrink-0">
+                                <img src={mc.imageUrl} alt={mc.name} className="w-full h-full object-cover" loading="lazy"
+                                  onError={e2 => { (e2.target as HTMLImageElement).style.opacity = "0.2"; }} />
+                              </div>
+                              <span className="text-[7px] font-mono leading-none" style={{ color: "#0AC8B9" }}>{wr}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* Hard counters */}
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          {matchups.weakAgainst.map(({ champ: mc, winRate: wr }) => (
+                            <div key={mc.id} className="flex flex-col items-center gap-0.5 cursor-pointer"
+                              title={`${mc.name} — ${wr}% WR`}
+                              onClick={e => { e.stopPropagation(); handleSelectChampion(mc.id); }}>
+                              <div className="w-6 h-6 rounded-sm overflow-hidden border border-[#FF4E5030] hover:border-[#FF4E50] transition-colors shrink-0">
+                                <img src={mc.imageUrl} alt={mc.name} className="w-full h-full object-cover" loading="lazy"
+                                  onError={e2 => { (e2.target as HTMLImageElement).style.opacity = "0.2"; }} />
+                              </div>
+                              <span className="text-[7px] font-mono leading-none" style={{ color: "#FF4E50" }}>{wr}%</span>
                             </div>
                           ))}
                         </div>
@@ -348,7 +382,7 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
 
                 {rightFiltered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-20 text-center text-[#5B7A8C] font-['Cinzel'] text-sm">
+                    <td colSpan={9} className="px-4 py-20 text-center text-[#5B7A8C] font-['Cinzel'] text-sm">
                       No champions found
                     </td>
                   </tr>

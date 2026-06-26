@@ -19,6 +19,45 @@ interface ProfileParams {
   region: Region;
 }
 
+// ── URL hash routing ───────────────────────────────────────────
+
+function encodeHash(view: View, profile: ProfileParams | null, champId: string | null): string {
+  if (view === "profile" && profile) {
+    return `profile/${profile.region}/${encodeURIComponent(profile.gameName)}/${encodeURIComponent(profile.tagLine)}`;
+  }
+  if (view === "champions" && champId) {
+    return `champions/${encodeURIComponent(champId)}`;
+  }
+  return view;
+}
+
+interface Decoded { view: View; profile?: ProfileParams; champId?: string }
+
+function decodeHash(raw: string): Decoded {
+  const hash = raw.replace(/^#/, "");
+  if (!hash || hash === "home") return { view: "home" };
+
+  const parts = hash.split("/");
+  const route = parts[0];
+
+  if (route === "profile" && parts.length >= 4) {
+    return {
+      view: "profile",
+      profile: {
+        region:   parts[1] as Region,
+        gameName: decodeURIComponent(parts[2]),
+        tagLine:  decodeURIComponent(parts[3]),
+      },
+    };
+  }
+  if (route === "champions") {
+    return { view: "champions", champId: parts[1] ? decodeURIComponent(parts[1]) : undefined };
+  }
+  const valid: View[] = ["home", "leaderboard", "tierlist", "patch"];
+  if (valid.includes(route as View)) return { view: route as View };
+  return { view: "home" };
+}
+
 // ── Error Boundary ────────────────────────────────────────────
 
 interface EBState { hasError: boolean; error: Error | null }
@@ -136,9 +175,29 @@ function CrawlNotifications() {
 // ── App ───────────────────────────────────────────────────────
 
 export default function App() {
-  const [view, setView]                     = useState<View>("home");
-  const [profileParams, setProfile]         = useState<ProfileParams | null>(null);
-  const [selectedChampionId, setChampionId] = useState<string | null>(null);
+  const [view, setView] = useState<View>(() => decodeHash(window.location.hash).view);
+  const [profileParams, setProfile] = useState<ProfileParams | null>(() => decodeHash(window.location.hash).profile ?? null);
+  const [selectedChampionId, setChampionId] = useState<string | null>(() => decodeHash(window.location.hash).champId ?? null);
+
+  // Keep URL hash in sync with app state
+  useEffect(() => {
+    const hash = encodeHash(view, profileParams, selectedChampionId);
+    if (window.location.hash.slice(1) !== hash) {
+      window.history.pushState(null, "", `#${hash}`);
+    }
+  }, [view, profileParams, selectedChampionId]);
+
+  // Handle browser back / forward
+  useEffect(() => {
+    const onPop = () => {
+      const d = decodeHash(window.location.hash);
+      setView(d.view);
+      setProfile(d.profile ?? null);
+      setChampionId(d.champId ?? null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const handleSearch = (gameName: string, tagLine: string, region: Region) => {
     setProfile({ gameName, tagLine, region });

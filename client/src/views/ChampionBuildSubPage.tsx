@@ -766,15 +766,18 @@ function SkillGrid({ order, skillOrder, champId, version }: {
   );
 }
 
-// ── Rank dropdown ──────────────────────────────────────────────
+// ── Rank dropdown (Challenger = highest, Iron = lowest) ───────
 const RANKS = [
-  { label: "Emerald+",    icon: "🟢", key: "EMERALD"     },
-  { label: "Diamond+",   icon: "💎", key: "DIAMOND"    },
-  { label: "Platinum+",  icon: "🔵", key: "PLATINUM"  },
-  { label: "Gold+",      icon: "🟡", key: "GOLD"       },
-  { label: "Master+",    icon: "💜", key: "MASTER"     },
-  { label: "Challenger", icon: "🔥", key: "CHALLENGER" },
-  { label: "All Tiers",  icon: "🏆", key: "EMERALD"    },
+  { label: "Challenger",    icon: "🔥", key: "CHALLENGER"   },
+  { label: "Grandmaster+",  icon: "⚡", key: "GRANDMASTER"  },
+  { label: "Master+",       icon: "💜", key: "MASTER"       },
+  { label: "Diamond+",      icon: "💎", key: "DIAMOND"      },
+  { label: "Emerald+",      icon: "🟢", key: "EMERALD"      },
+  { label: "Platinum+",     icon: "🔵", key: "PLATINUM"     },
+  { label: "Gold+",         icon: "🟡", key: "GOLD"         },
+  { label: "Silver+",       icon: "⚪", key: "SILVER"       },
+  { label: "Bronze+",       icon: "🟤", key: "BRONZE"       },
+  { label: "Iron+",         icon: "🔩", key: "IRON"         },
 ];
 
 function RankSelect({ value, onChange }: { value: string; onChange: (l: string, k: string) => void }) {

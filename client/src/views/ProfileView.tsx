@@ -531,20 +531,21 @@ function MatchRow({
           {items.map((id, i) => <ItemSlot key={i} itemId={id} size={26} />)}
         </div>
 
-        {/* 5v5 player names */}
-        <div className="hidden xl:flex gap-3 ml-auto shrink-0">
-          <div className="flex flex-col gap-px">
+        {/* 5v5 player names — fixed-width columns so all cards align uniformly */}
+        <div className="hidden xl:flex gap-1.5 ml-auto shrink-0">
+          <div className="flex flex-col gap-px w-[76px]">
             {blue.map(p => (
               <div key={p.puuid}
-                className={`text-[9px] truncate max-w-[72px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-[#5B7A8C]"}`}>
+                className={`text-[9px] truncate w-[76px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-[#5B7A8C]"}`}>
                 {p.riotIdGameName || p.summonerName || "?"}
               </div>
             ))}
           </div>
-          <div className="flex flex-col gap-px">
+          <div className="w-px bg-[#1E2D3D] self-stretch" />
+          <div className="flex flex-col gap-px w-[76px]">
             {red.map(p => (
               <div key={p.puuid}
-                className={`text-[9px] truncate max-w-[72px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-[#5B7A8C]"}`}>
+                className={`text-[9px] truncate w-[76px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-[#5B7A8C]"}`}>
                 {p.riotIdGameName || p.summonerName || "?"}
               </div>
             ))}
