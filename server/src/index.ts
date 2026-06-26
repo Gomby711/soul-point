@@ -155,7 +155,7 @@ app.get("/api/challenges/:region/:puuid", cached(300), async (req, res) => {
 });
 
 // ── Leaderboard ───────────────────────────────────────────────
-app.get("/api/leaderboard/:region/:tier", cached(180), async (req, res) => {
+app.get("/api/leaderboard/:region/:tier", cached(600), async (req, res) => {
   if (!requireKey(res)) return;
   try {
     const { region, tier } = req.params as Record<string, string>;
@@ -191,16 +191,45 @@ app.get("/api/leaderboard/:region/:tier", cached(180), async (req, res) => {
       }>;
     };
 
-    // Normalize entries — prefer riotIdGameName if summonerName is empty
-    const normalized = {
-      ...data,
-      entries: data.entries.map(e => ({
-        ...e,
-        summonerName: e.summonerName?.trim() || e.riotIdGameName || `Player ${e.leaguePoints}LP`,
-      })),
-    };
+    // First pass: use whatever names the league endpoint already provides
+    const entries = data.entries.map(e => ({
+      ...e,
+      summonerName: e.riotIdGameName?.trim() || e.summonerName?.trim() || "",
+    }));
 
-    res.json(normalized);
+    // Second pass: batch-resolve any entries still missing a name via PUUID
+    const needsName = entries.filter(e => !e.summonerName && e.puuid);
+    if (needsName.length > 0) {
+      const BATCH = 10; // stay well under 20 req/s rate limit
+      for (let i = 0; i < needsName.length; i += BATCH) {
+        const batch = needsName.slice(i, i + BATCH);
+        const results = await Promise.allSettled(
+          batch.map(async e => {
+            const acctUrl = `${regionalUrl(region)}/riot/account/v1/accounts/by-puuid/${encodeURIComponent(e.puuid!)}`;
+            const acct = await riotFetch(acctUrl, KEY) as { gameName: string; tagLine: string };
+            return { puuid: e.puuid!, gameName: acct.gameName, tagLine: acct.tagLine };
+          }),
+        );
+        for (const r of results) {
+          if (r.status === "fulfilled" && r.value.gameName) {
+            const entry = entries.find(e => e.puuid === r.value.puuid);
+            if (entry) {
+              entry.summonerName = r.value.gameName;
+              entry.riotIdTagline = r.value.tagLine;
+            }
+          }
+        }
+        // Small pause between batches to respect rate limits
+        if (i + BATCH < needsName.length) await new Promise(r => setTimeout(r, 600));
+      }
+    }
+
+    // Final fallback for any entries still without a name
+    for (const e of entries) {
+      if (!e.summonerName) e.summonerName = `Player ${e.leaguePoints}LP`;
+    }
+
+    res.json({ ...data, entries });
   } catch (e) { handleError(e, res); }
 });
 

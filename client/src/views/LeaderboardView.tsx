@@ -35,8 +35,6 @@ interface LeaderboardEntry {
   freshBlood: boolean;
 }
 
-const PLACEHOLDER_RE = /^Player \d+LP$/;
-
 export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: string, region: Region) => void }) {
   const [region, setRegion]       = useState<Region>("NA");
   const [tier, setTier]           = useState<Tier>("CHALLENGER");
@@ -44,15 +42,12 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [clickingPuuid, setClickingPuuid] = useState<string | null>(null);
-  // puuid → resolved display name
-  const [resolvedNames, setResolvedNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setEntries([]);
-    setResolvedNames({});
 
     fetchLeaderboard(region, tier)
       .then(data => {
@@ -62,7 +57,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
           .slice(0, 50)
           .map((e, i) => ({
             rank: i + 1,
-            summonerName: e.summonerName || `Player #${i + 1}`,
+            summonerName: e.summonerName || `#${i + 1}`,
             puuid: e.puuid,
             tier: (data.tier ?? tier) as Tier,
             lp: e.leaguePoints ?? 0,
@@ -83,33 +78,6 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
     return () => { cancelled = true; };
   }, [region, tier]);
 
-  // Background-resolve real names for placeholder entries
-  useEffect(() => {
-    const toResolve = entries.filter(e => e.puuid && PLACEHOLDER_RE.test(e.summonerName));
-    if (toResolve.length === 0) return;
-    let cancelled = false;
-
-    (async () => {
-      for (const entry of toResolve) {
-        if (cancelled || !entry.puuid) break;
-        try {
-          const { gameName } = await fetchRiotIdByPuuid(entry.puuid, region);
-          if (!cancelled && gameName) {
-            setResolvedNames(prev => ({ ...prev, [entry.puuid!]: gameName }));
-          }
-        } catch { /* skip unresolvable */ }
-        // Small delay to avoid hitting API rate limits
-        await new Promise(r => setTimeout(r, 120));
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [entries, region]);
-
-  function displayName(e: LeaderboardEntry): string {
-    return (e.puuid && resolvedNames[e.puuid]) || e.summonerName;
-  }
-
   async function handlePlayerClick(entry: LeaderboardEntry) {
     if (clickingPuuid) return;
     if (entry.puuid) {
@@ -118,12 +86,12 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
         const { gameName, tagLine } = await fetchRiotIdByPuuid(entry.puuid, region);
         onSearch(gameName, tagLine, region);
       } catch {
-        onSearch(displayName(entry), REGION_DEFAULT_TAG[region], region);
+        onSearch(entry.summonerName, REGION_DEFAULT_TAG[region], region);
       } finally {
         setClickingPuuid(null);
       }
     } else {
-      onSearch(displayName(entry), REGION_DEFAULT_TAG[region], region);
+      onSearch(entry.summonerName, REGION_DEFAULT_TAG[region], region);
     }
   }
 
@@ -192,7 +160,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
         </div>
       </OrnatePanel>
 
-      {/* Podium top 3 — no rank icons, real names */}
+      {/* Podium top 3 */}
       {!loading && podium && (
         <div className="grid grid-cols-3 gap-3 mb-6">
           {podium.map((player, podiumIdx) => {
@@ -202,8 +170,6 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
             const col = ["#C89B3C", "#F4E070", "#A0522D"][displayRank - 1];
             const total = (player.wins + player.losses) || 1;
             const wr = Math.round((player.wins / total) * 100);
-            const name = displayName(player);
-            const isPlaceholder = PLACEHOLDER_RE.test(player.summonerName) && !resolvedNames[player.puuid ?? ''];
             return (
               <OrnatePanel
                 key={player.rank}
@@ -215,9 +181,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                   {["②", "①", "③"][podiumIdx]}
                 </div>
                 <div className="font-['Cinzel'] font-bold text-sm text-white mb-1">
-                  {isPlaceholder ? (
-                    <span className="text-[#3A4A5A] animate-pulse">Resolving...</span>
-                  ) : name}
+                  {player.summonerName}
                 </div>
                 <div className="font-mono text-xs font-bold mb-2" style={{ color: col }}>
                   {player.lp.toLocaleString()} LP
@@ -275,8 +239,6 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                   const wr    = Math.round((e.wins / total) * 100);
                   const isTop3 = e.rank <= 3;
                   const col   = rankColor(e.tier);
-                  const name  = displayName(e);
-                  const isPlaceholder = PLACEHOLDER_RE.test(e.summonerName) && !resolvedNames[e.puuid ?? ''];
                   return (
                     <tr
                       key={`${e.rank}-${e.summonerName}`}
@@ -302,8 +264,8 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
 
                       {/* Summoner */}
                       <td className="px-4 py-2">
-                        <span className={`font-['Cinzel'] text-white ${isPlaceholder ? "text-[#3A4A5A]" : ""}`}>
-                          {isPlaceholder ? "..." : name}
+                        <span className="font-['Cinzel'] text-white">
+                          {e.summonerName}
                         </span>
                       </td>
 
