@@ -31,9 +31,11 @@ export function TierListView({ onSelectChampion }: TierListViewProps) {
 
   const patchLabel = useMemo(() => {
     if (!version) return "Loading...";
-    // version looks like "15.12.1" — show first two parts
     const parts = version.split(".");
-    return parts.length >= 2 ? `Patch ${parts[0]}.${parts[1]}` : `Patch ${version}`;
+    const major = parseInt(parts[0], 10);
+    // DDragon uses internal major (e.g. 16) while the game shows 26
+    const displayMajor = major >= 15 ? major + 10 : major;
+    return parts.length >= 2 ? `Patch ${displayMajor}.${parts[1]}` : `Patch ${version}`;
   }, [version]);
 
   const byTier = useMemo(() => {

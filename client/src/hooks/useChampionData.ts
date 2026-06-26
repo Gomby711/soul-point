@@ -55,7 +55,7 @@ const JUNGLE_PRIMARY = new Set([
 // Marksman-tagged champions whose PRIMARY role is ADC
 // (Ashe has "Support" secondary tag which wrongly made her Support)
 const ADC_PRIMARY = new Set([
-  "Ashe", "Tristana", "Quinn", "Smolder",
+  "Ashe", "Tristana", "Smolder",
 ]);
 
 // Marksman/Assassin-tagged champions who primarily play Mid (not ADC)
@@ -63,12 +63,11 @@ const MID_MARKSMAN_OVERRIDE = new Set([
   "Azir",    // Mage/Marksman → Mid emperor
   "Akshan",  // Marksman/Assassin → Mid
   "Corki",   // Marksman → predominantly Mid in high-elo
-  "Jayce",   // Fighter/Marksman → Mid/Top flex, primarily Mid in pro
 ]);
 
 // Marksman/Assassin-tagged champions who primarily play Top
 const TOP_PRIMARY = new Set([
-  "Teemo", "Gnar", "Kennen",
+  "Teemo", "Gnar", "Kennen", "Quinn", "Jayce",
 ]);
 
 // Marksman-tagged champions who primarily play Support
@@ -76,9 +75,14 @@ const SUPPORT_PRIMARY = new Set([
   "Senna",
 ]);
 
+// Support-tagged champions who primarily play Support (not Mid)
+const SUPPORT_OVERRIDE = new Set([
+  "Lux", "Zyra",
+]);
+
 // Support-tagged champions who primarily play Mid
 const MID_SUPPORT_OVERRIDE = new Set([
-  "Lux", "Xerath", "Vel'Koz", "Zyra",
+  "Xerath", "Vel'Koz",
 ]);
 
 // ── Role derivation ───────────────────────────────────────────
@@ -88,6 +92,7 @@ function deriveRole(name: string, tags: string[]): PrimaryRole {
   if (MID_MARKSMAN_OVERRIDE.has(name)) return "Mid";
   if (TOP_PRIMARY.has(name))           return "Top";
   if (SUPPORT_PRIMARY.has(name))       return "Support";
+  if (SUPPORT_OVERRIDE.has(name))      return "Support";
   if (MID_SUPPORT_OVERRIDE.has(name))  return "Mid";
   if (JUNGLE_PRIMARY.has(name))        return "Jungle";
 
@@ -135,6 +140,7 @@ function deriveBuildType(name: string, tags: string[]): BuildType {
     if (has("Mage")) return "MAGE";
     return "FIGHTER";
   }
+  if (SUPPORT_OVERRIDE.has(name)) return "SUPPORT_AP";
   if (MID_SUPPORT_OVERRIDE.has(name)) return "MAGE";
 
   if (has("Support")) {
@@ -204,6 +210,7 @@ function mergeLiveMeta(champs: ChampionInfo[], meta: Record<string, ChampMetaEnt
       MID_MARKSMAN_OVERRIDE.has(c.name) ||
       TOP_PRIMARY.has(c.name) ||
       SUPPORT_PRIMARY.has(c.name) ||
+      SUPPORT_OVERRIDE.has(c.name) ||
       MID_SUPPORT_OVERRIDE.has(c.name) ||
       JUNGLE_PRIMARY.has(c.name);
     return {
@@ -268,36 +275,30 @@ export function useChampionData() {
           };
         });
 
-        // Merge live OP.GG stats (win rate, pick rate, ban rate, tier, games)
+        // Merge live OP.GG stats (win rate, pick rate, ban rate, games)
         const withLive = mergeLiveMeta(rawChamps, metaRaw);
-
-        // Assign tiers: use OP.GG tier where available; percentile for the rest
-        const hasLiveTier = new Set(
-          Object.keys(metaRaw).map(k => normName(k))
-        );
-        const noTier = withLive.filter(c => !hasLiveTier.has(normName(c.name)));
-        const tiered = assignTiersByPercentile(noTier);
-        const tierMap = new Map(tiered.map(c => [c.id, c.tier]));
 
         // Apply SP crawl positions (highest-confidence source — real high-elo match data)
         const withPositions = withLive.map(c => {
-          // Only apply if not in a manual override set (e.g. Azir → Mid)
           const hasOverride =
             ADC_PRIMARY.has(c.name) ||
             MID_MARKSMAN_OVERRIDE.has(c.name) ||
             TOP_PRIMARY.has(c.name) ||
             SUPPORT_PRIMARY.has(c.name) ||
+            SUPPORT_OVERRIDE.has(c.name) ||
             MID_SUPPORT_OVERRIDE.has(c.name) ||
             JUNGLE_PRIMARY.has(c.name);
-          if (hasOverride) return hasLiveTier.has(normName(c.name)) ? c : { ...c, tier: tierMap.get(c.id) ?? "C" };
+          if (hasOverride) return c;
           const spPos = spPositions[c.id] ?? spPositions[c.name];
           const spRole = spPos ? positionToRole(spPos.primary) : null;
-          const base = hasLiveTier.has(normName(c.name)) ? c : { ...c, tier: tierMap.get(c.id) ?? "C" };
-          return spRole ? { ...base, primaryRole: spRole } : base;
+          return spRole ? { ...c, primaryRole: spRole } : c;
         });
 
-        withPositions.sort((a, b) => a.name.localeCompare(b.name));
-        setChampions(withPositions);
+        // Always assign tiers by percentile based on win rate + pick rate score
+        // This ensures the full S+ → C distribution with actual C-tier champs
+        const allTiered = assignTiersByPercentile(withPositions);
+        allTiered.sort((a, b) => a.name.localeCompare(b.name));
+        setChampions(allTiered);
       } finally {
         setLoading(false);
       }

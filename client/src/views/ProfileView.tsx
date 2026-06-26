@@ -944,9 +944,9 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
                   </div>
                 </div>
                 <div className="pt-2 min-w-0">
-                  <h1 className="font-['Cinzel'] font-black text-base text-[#C8AA6E] truncate">{state.gameName}</h1>
-                  <div className="text-[10px] text-[#5B7A8C] font-['Cinzel']">#{state.tagLine}</div>
-                  <div className="text-[10px] text-[#5B7A8C]">{region}</div>
+                  <h1 className="font-['Cinzel'] font-black text-base text-[#F0E6BE] truncate">{state.gameName}</h1>
+                  <div className="text-[11px] text-[#C8AA6E] font-['Cinzel'] font-bold">#{state.tagLine}</div>
+                  <div className="text-[10px] text-[#A0B4C8]">{region}</div>
                 </div>
               </div>
             </OrnatePanel>

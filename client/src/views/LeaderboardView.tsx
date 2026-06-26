@@ -192,9 +192,9 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                 <div className="font-['Cinzel'] font-black text-3xl mb-2" style={{ color: col }}>
                   {["②", "①", "③"][podiumIdx]}
                 </div>
-                <div className={`mx-auto mb-2 ${isFirst ? "w-28 h-28" : "w-24 h-24"}`}
+                <div className={`mx-auto mb-2 flex items-center justify-center overflow-hidden ${isFirst ? "w-32 h-32" : "w-24 h-24"}`}
                   style={{ filter: `drop-shadow(0 0 6px ${col}66)` }}>
-                  <RankEmblem tier={player.tier} size={isFirst ? 200 : 176} />
+                  <RankEmblem tier={player.tier} size={isFirst ? 128 : 96} />
                 </div>
                 <div className="font-['Cinzel'] font-bold text-xs text-[#C8AA6E] truncate">{player.summonerName}</div>
                 <div className="font-mono text-xs mt-1 font-bold" style={{ color: col }}>
