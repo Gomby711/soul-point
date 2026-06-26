@@ -97,7 +97,7 @@ export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
             { Icon: Users,    label: "Summoners Tracked", value: "48.2M" },
             { Icon: BarChart2, label: "Matches Analyzed",  value: "1.2B"  },
             { Icon: Globe,    label: "Regions Covered",   value: "11"    },
-            { Icon: Sword,    label: "Champions",         value: "169"   },
+            { Icon: Sword,    label: "Champions",         value: "173"   },
           ].map(({ Icon, label, value }) => (
             <div key={label} className="flex items-center gap-3">
               <div

@@ -45,7 +45,7 @@ export function NavBar({ view, setView }: NavBarProps) {
       />
       <div className="w-full px-6 flex items-center" style={{ height: "60px" }}>
         {/* Logo — absolute far left */}
-        <button onClick={() => setView("home")} className="flex items-center gap-2.5 shrink-0">
+        <button onClick={() => setView("home")} className="flex items-center gap-2.5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
           <div className="relative w-8 h-8">
             <div
               className="hex-clip w-full h-full flex items-center justify-center"

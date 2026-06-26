@@ -55,7 +55,7 @@ const JUNGLE_PRIMARY = new Set([
 // Marksman-tagged champions whose PRIMARY role is ADC
 // (Ashe has "Support" secondary tag which wrongly made her Support)
 const ADC_PRIMARY = new Set([
-  "Ashe", "Tristana", "Smolder",
+  "Ashe", "Tristana", "Smolder", "Yunara",
 ]);
 
 // Marksman/Assassin-tagged champions who primarily play Mid (not ADC)
@@ -67,12 +67,12 @@ const MID_MARKSMAN_OVERRIDE = new Set([
 
 // Marksman/Assassin-tagged champions who primarily play Top
 const TOP_PRIMARY = new Set([
-  "Teemo", "Gnar", "Kennen", "Quinn", "Jayce",
+  "Teemo", "Gnar", "Kennen", "Quinn", "Jayce", "Ambessa", "Zaahen",
 ]);
 
 // Marksman-tagged champions who primarily play Support
 const SUPPORT_PRIMARY = new Set([
-  "Senna",
+  "Senna", "Mel",
 ]);
 
 // Support-tagged champions who primarily play Support (not Mid)
@@ -82,7 +82,7 @@ const SUPPORT_OVERRIDE = new Set([
 
 // Support-tagged champions who primarily play Mid
 const MID_SUPPORT_OVERRIDE = new Set([
-  "Xerath", "Vel'Koz",
+  "Xerath", "Vel'Koz", "Aurora", "Locke",
 ]);
 
 // ── Role derivation ───────────────────────────────────────────
