@@ -10,7 +10,7 @@ import {
   getChampionStats, getChampionAbilities, getChampionPatchNote,
   getItemData, getItemPatchNote, getRuneData, getRunePatchNote,
 } from "./lol-data-mcp.js";
-import { startCrawl, queueMultiRegionCrawl, getCrawlStatus, hasApiKeyChanged, loadPositionStats, crawlQueueAdd } from "./crawler.js";
+import { startCrawl, queueMultiRegionCrawl, getCrawlStatus, hasApiKeyChanged, loadPositionStats, crawlQueueAdd, getPatchInfo, getAggrStats } from "./crawler.js";
 import { getChampionBuilds, getAllBuilds, getChampionList } from "./algo.js";
 
 const app  = express();
@@ -526,6 +526,20 @@ app.get("/api/sp/builds", cached(300), async (_req, res) => {
   try {
     const all = await getAllBuilds();
     res.json(all);
+  } catch (e) { handleError(e, res); }
+});
+
+app.get("/api/sp/patch", cached(300), async (_req, res) => {
+  try {
+    const info = await getPatchInfo();
+    res.json(info);
+  } catch (e) { handleError(e, res); }
+});
+
+app.get("/api/sp/aggr-stats", cached(600), async (_req, res) => {
+  try {
+    const stats = await getAggrStats();
+    res.json(stats);
   } catch (e) { handleError(e, res); }
 });
 

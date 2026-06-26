@@ -44,6 +44,29 @@ export interface CrawlStatus {
   regionsQueued: string[];
 }
 
+export interface ChampionAggrStats {
+  patch: string;
+  totalGames: number;
+  wins: number;
+  totalKills: number;
+  totalDeaths: number;
+  totalAssists: number;
+  totalGoldEarned: number;
+  totalDamageDealt: number;
+  totalDamageTaken: number;
+  totalCrowdControlScore: number;
+  totalXp: number;
+}
+
+export type AggregateStats = Record<string, ChampionAggrStats>;
+
+export interface PatchInfo {
+  currentPatch: string;
+  displayPatch: string;
+  detectedAt: number;
+  patchHistory: string[];
+}
+
 const MIN_GAMES_PER_CHAMP = 20; // target games per champion for accurate builds
 
 let crawlStatus: CrawlStatus = {
@@ -142,6 +165,89 @@ export async function hasApiKeyChanged(apiKey: string): Promise<boolean> {
     return true;
   }
   return false;
+}
+
+// ── Patch & aggregate stats persistence ──────────────────────
+
+function parsePatch(gameVersion: string): string {
+  const parts = gameVersion.split(".");
+  return parts.length >= 2 ? `${parts[0]}.${parts[1]}` : gameVersion;
+}
+
+function patchToDisplay(patch: string): string {
+  const parts = patch.split(".");
+  if (parts.length >= 1) {
+    const major = parseInt(parts[0], 10);
+    const displayMajor = major >= 15 ? major + 10 : major;
+    return parts.length >= 2 ? `${displayMajor}.${parts[1]}` : String(displayMajor);
+  }
+  return patch;
+}
+
+async function loadPatchInfo(): Promise<PatchInfo | null> {
+  try {
+    const raw = await fs.readFile(path.join(DATA_DIR, "patch-info.json"), "utf-8");
+    return JSON.parse(raw) as PatchInfo;
+  } catch {
+    return null;
+  }
+}
+
+async function savePatchInfo(info: PatchInfo) {
+  await fs.writeFile(path.join(DATA_DIR, "patch-info.json"), JSON.stringify(info), "utf-8");
+}
+
+export async function getPatchInfo(): Promise<PatchInfo> {
+  return (await loadPatchInfo()) ?? {
+    currentPatch: "16.13",
+    displayPatch: "26.13",
+    detectedAt: Date.now(),
+    patchHistory: ["16.13"],
+  };
+}
+
+async function loadAggrStats(): Promise<AggregateStats> {
+  try {
+    const raw = await fs.readFile(path.join(DATA_DIR, "champion-aggr-stats.json"), "utf-8");
+    return JSON.parse(raw) as AggregateStats;
+  } catch {
+    return {};
+  }
+}
+
+async function saveAggrStats(stats: AggregateStats) {
+  await fs.writeFile(path.join(DATA_DIR, "champion-aggr-stats.json"), JSON.stringify(stats), "utf-8");
+}
+
+export async function getAggrStats(): Promise<Record<string, {
+  patch: string; totalGames: number; wins: number;
+  avgKills: number; avgDeaths: number; avgAssists: number;
+  avgGoldEarned: number; avgDamageDealt: number; avgDamageTaken: number;
+  avgCrowdControlScore: number;
+}>> {
+  const raw = await loadAggrStats();
+  const result: Record<string, {
+    patch: string; totalGames: number; wins: number;
+    avgKills: number; avgDeaths: number; avgAssists: number;
+    avgGoldEarned: number; avgDamageDealt: number; avgDamageTaken: number;
+    avgCrowdControlScore: number;
+  }> = {};
+  for (const [champ, s] of Object.entries(raw)) {
+    const g = s.totalGames || 1;
+    result[champ] = {
+      patch: s.patch,
+      totalGames: s.totalGames,
+      wins: s.wins,
+      avgKills: +(s.totalKills / g).toFixed(2),
+      avgDeaths: +(s.totalDeaths / g).toFixed(2),
+      avgAssists: +(s.totalAssists / g).toFixed(2),
+      avgGoldEarned: +(s.totalGoldEarned / g).toFixed(0),
+      avgDamageDealt: +(s.totalDamageDealt / g).toFixed(0),
+      avgDamageTaken: +(s.totalDamageTaken / g).toFixed(0),
+      avgCrowdControlScore: +(s.totalCrowdControlScore / g).toFixed(2),
+    };
+  }
+  return result;
 }
 
 // ── Item parsing ──────────────────────────────────────────────
@@ -275,6 +381,8 @@ async function runCrawl(opts: CrawlJob) {
   const stats = await loadBuildStats();
   const positions = await loadPositionStats();
   const crawled = await loadCrawledMatches();
+  const aggrStats = await loadAggrStats();
+  const patchCounts: Record<string, number> = {};
   const platUrl = platformUrl(region);
   const regUrl = regionalUrl(region);
 
@@ -356,10 +464,17 @@ async function runCrawl(opts: CrawlJob) {
       const url = `${regUrl}/lol/match/v5/matches/${allMatchIds[i]}`;
       const match = await throttle(url, apiKey) as {
         info: {
+          gameVersion: string;
           participants: Array<{
             championName: string;
             teamPosition: string;
             win: boolean;
+            kills: number; deaths: number; assists: number;
+            goldEarned: number;
+            totalDamageDealtToChampions: number;
+            totalDamageTaken: number;
+            totalTimeCCDealt: number;
+            champExperience: number;
             item0: number; item1: number; item2: number;
             item3: number; item4: number; item5: number; item6: number;
             perks?: {
@@ -371,6 +486,10 @@ async function runCrawl(opts: CrawlJob) {
           }>;
         };
       };
+
+      // Track patch version (once per match)
+      const patchKey = parsePatch(match.info.gameVersion ?? "");
+      if (patchKey) patchCounts[patchKey] = (patchCounts[patchKey] ?? 0) + 1;
 
       for (const p of match.info.participants) {
         const coreItems = getCoreItems(p.item0, p.item1, p.item2, p.item3, p.item4, p.item5);
@@ -413,6 +532,29 @@ async function runCrawl(opts: CrawlJob) {
           if (!positions[p.championName]) positions[p.championName] = {};
           positions[p.championName][pos] = (positions[p.championName][pos] ?? 0) + 1;
         }
+
+        // Accumulate per-champion aggregate stats
+        if (!aggrStats[p.championName]) {
+          aggrStats[p.championName] = {
+            patch: patchKey,
+            totalGames: 0, wins: 0,
+            totalKills: 0, totalDeaths: 0, totalAssists: 0,
+            totalGoldEarned: 0, totalDamageDealt: 0, totalDamageTaken: 0,
+            totalCrowdControlScore: 0, totalXp: 0,
+          };
+        }
+        const agg = aggrStats[p.championName];
+        agg.totalGames++;
+        if (p.win) agg.wins++;
+        agg.totalKills += p.kills ?? 0;
+        agg.totalDeaths += p.deaths ?? 0;
+        agg.totalAssists += p.assists ?? 0;
+        agg.totalGoldEarned += p.goldEarned ?? 0;
+        agg.totalDamageDealt += p.totalDamageDealtToChampions ?? 0;
+        agg.totalDamageTaken += p.totalDamageTaken ?? 0;
+        agg.totalCrowdControlScore += p.totalTimeCCDealt ?? 0;
+        agg.totalXp += p.champExperience ?? 0;
+        if (patchKey) agg.patch = patchKey;
       }
 
       crawled.add(allMatchIds[i]);
@@ -483,13 +625,24 @@ async function runCrawl(opts: CrawlJob) {
       try {
         const url = `${regUrl}/lol/match/v5/matches/${extraMatchIds[i]}`;
         const match = await throttle(url, apiKey) as {
-          info: { participants: Array<{
-            championName: string; teamPosition: string; win: boolean;
-            item0: number; item1: number; item2: number;
-            item3: number; item4: number; item5: number; item6: number;
-            perks?: { styles: Array<{ style: number; selections: Array<{ perk: number }> }> };
-          }> };
+          info: {
+            gameVersion: string;
+            participants: Array<{
+              championName: string; teamPosition: string; win: boolean;
+              kills: number; deaths: number; assists: number;
+              goldEarned: number;
+              totalDamageDealtToChampions: number;
+              totalDamageTaken: number;
+              totalTimeCCDealt: number;
+              champExperience: number;
+              item0: number; item1: number; item2: number;
+              item3: number; item4: number; item5: number; item6: number;
+              perks?: { styles: Array<{ style: number; selections: Array<{ perk: number }> }> };
+            }>;
+          };
         };
+        const boostPatchKey = parsePatch(match.info.gameVersion ?? "");
+        if (boostPatchKey) patchCounts[boostPatchKey] = (patchCounts[boostPatchKey] ?? 0) + 1;
         for (const p of match.info.participants) {
           const coreItems = getCoreItems(p.item0, p.item1, p.item2, p.item3, p.item4, p.item5);
           if (coreItems.length < 2) continue;
@@ -511,6 +664,27 @@ async function runCrawl(opts: CrawlJob) {
             if (!positions[p.championName]) positions[p.championName] = {};
             positions[p.championName][pos] = (positions[p.championName][pos] ?? 0) + 1;
           }
+          if (!aggrStats[p.championName]) {
+            aggrStats[p.championName] = {
+              patch: boostPatchKey,
+              totalGames: 0, wins: 0,
+              totalKills: 0, totalDeaths: 0, totalAssists: 0,
+              totalGoldEarned: 0, totalDamageDealt: 0, totalDamageTaken: 0,
+              totalCrowdControlScore: 0, totalXp: 0,
+            };
+          }
+          const agg2 = aggrStats[p.championName];
+          agg2.totalGames++;
+          if (p.win) agg2.wins++;
+          agg2.totalKills += p.kills ?? 0;
+          agg2.totalDeaths += p.deaths ?? 0;
+          agg2.totalAssists += p.assists ?? 0;
+          agg2.totalGoldEarned += p.goldEarned ?? 0;
+          agg2.totalDamageDealt += p.totalDamageDealtToChampions ?? 0;
+          agg2.totalDamageTaken += p.totalDamageTaken ?? 0;
+          agg2.totalCrowdControlScore += p.totalTimeCCDealt ?? 0;
+          agg2.totalXp += p.champExperience ?? 0;
+          if (boostPatchKey) agg2.patch = boostPatchKey;
         }
         crawled.add(extraMatchIds[i]);
       } catch { /* skip */ }
@@ -520,10 +694,19 @@ async function runCrawl(opts: CrawlJob) {
     await saveCrawledMatches(crawled);
   }
 
-  // Final save
+  // Final save — also persist patch info and aggregate stats
   await saveBuildStats(stats);
   await savePositionStats(positions);
   await saveCrawledMatches(crawled);
+  await saveAggrStats(aggrStats);
+  if (Object.keys(patchCounts).length > 0) {
+    const dominantPatch = Object.entries(patchCounts).sort((a, b) => b[1] - a[1])[0][0];
+    const displayPatch = patchToDisplay(dominantPatch);
+    const existingPatch = await loadPatchInfo();
+    const history = [...(existingPatch?.patchHistory ?? [])];
+    if (!history.includes(dominantPatch)) history.push(dominantPatch);
+    await savePatchInfo({ currentPatch: dominantPatch, displayPatch, detectedAt: Date.now(), patchHistory: history });
+  }
 
   const nextQueue = crawlQueue.map(j => j.region);
   const isDone = nextQueue.length === 0;

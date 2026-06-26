@@ -164,22 +164,27 @@ function normName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function champScore(wr: number, pr: number): number {
-  return (wr - 47) * 3 + pr * 2;
+function champScore(wr: number, pr: number, br: number, kda: number): number {
+  const wrScore  = (wr - 47) * 4;
+  const prScore  = pr * 1.5;
+  const brScore  = br * 2;
+  const kdaScore = (kda - 2.0) * 1.5;
+  return wrScore + prScore + brScore + kdaScore;
 }
 
-// Assign tiers by percentile for champions not covered by live data
+// SP = Soul Power — top 3% of champions by combined metrics
 const TIER_CUTOFFS: { frac: number; tier: string }[] = [
-  { frac: 0.05, tier: "S+" },
-  { frac: 0.10, tier: "S"  },
-  { frac: 0.15, tier: "A+" },
-  { frac: 0.20, tier: "A"  },
-  { frac: 0.25, tier: "B"  },
+  { frac: 0.03, tier: "SP" },
+  { frac: 0.06, tier: "S+" },
+  { frac: 0.11, tier: "S"  },
+  { frac: 0.16, tier: "A+" },
+  { frac: 0.21, tier: "A"  },
+  { frac: 0.26, tier: "B"  },
   { frac: 1.00, tier: "C"  },
 ];
 
 function assignTiersByPercentile(champs: ChampionInfo[]): ChampionInfo[] {
-  const scored = champs.map(c => ({ c, score: champScore(c.winRate, c.pickRate) }));
+  const scored = champs.map(c => ({ c, score: champScore(c.winRate, c.pickRate, c.banRate, parseFloat(c.kda)) }));
   scored.sort((a, b) => b.score - a.score);
   const n = scored.length;
   let cumFrac = 0;

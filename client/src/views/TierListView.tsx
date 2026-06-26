@@ -1,23 +1,26 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { BarChart2 } from "lucide-react";
 import { useChampionData } from "@/hooks/useChampionData";
 import type { PrimaryRole } from "@/hooks/useChampionData";
 import { RoleIcon, RoleBadge } from "@/components/common/RoleIcon";
-import { useState } from "react";
 import { prefetchOPGGBuild } from "@/views/ChampionBuildSubPage";
+import { fetchPatchInfo } from "@/api/client";
 
-const TIERS_DISPLAY = ["S+", "S", "A+", "A", "B", "C"] as const;
+const TIERS_DISPLAY = ["SP", "S+", "S", "A+", "A", "B", "C"] as const;
 const ROLES: (PrimaryRole | "All")[] = ["All", "Top", "Jungle", "Mid", "ADC", "Support"];
 
 const TIER_BG: Record<string, string> = {
+  SP:  "rgba(255,215,0,0.08)",
   "S+": "rgba(244,224,112,0.05)", S: "rgba(200,155,60,0.05)",
   "A+": "rgba(10,200,185,0.05)",  A: "rgba(160,180,200,0.05)",
   B:   "rgba(91,122,140,0.05)",   C: "rgba(58,74,90,0.05)",
 };
 const TIER_COLORS: Record<string, string> = {
+  SP: "#FFD700",
   "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C", C: "#3a4a5a",
 };
 const TIER_BORDER: Record<string, string> = {
+  SP: "#FFD70050",
   "S+": "#F4E07040", S: "#C89B3C40", "A+": "#0AC8B940", A: "#A0B4C840", B: "#5B7A8C40", C: "#3a4a5a40",
 };
 
@@ -28,33 +31,45 @@ interface TierListViewProps {
 export function TierListView({ onSelectChampion }: TierListViewProps) {
   const { champions, loading, version } = useChampionData();
   const [role, setRole] = useState<PrimaryRole | "All">("All");
+  const [patchFilter, setPatchFilter] = useState("all");
+  const [tierFilter, setTierFilter] = useState("all");
+  const [serverFilter, setServerFilter] = useState("all");
+  const [patchInfo, setPatchInfo] = useState<{ currentPatch: string; displayPatch: string; detectedAt: number } | null>(null);
+
+  useEffect(() => {
+    fetchPatchInfo().then(setPatchInfo).catch(() => null);
+  }, []);
 
   const patchLabel = useMemo(() => {
+    if (patchInfo?.displayPatch) return `Patch ${patchInfo.displayPatch}`;
     if (!version) return "Loading...";
     const parts = version.split(".");
     const major = parseInt(parts[0], 10);
-    // DDragon uses internal major (e.g. 16) while the game shows 26
     const displayMajor = major >= 15 ? major + 10 : major;
     return parts.length >= 2 ? `Patch ${displayMajor}.${parts[1]}` : `Patch ${version}`;
-  }, [version]);
+  }, [version, patchInfo]);
 
   const byTier = useMemo(() => {
-    const map: Record<string, typeof champions> = { "S+": [], S: [], "A+": [], A: [], B: [], C: [] };
+    const map: Record<string, typeof champions> = { SP: [], "S+": [], S: [], "A+": [], A: [], B: [], C: [] };
     for (const c of champions) {
       if (role !== "All" && c.primaryRole !== role) continue;
       const tier = c.tier in map ? c.tier : "C";
       map[tier].push(c);
     }
-    // Sort within each tier by win rate descending
     for (const tier of TIERS_DISPLAY) {
       map[tier].sort((a, b) => b.winRate - a.winRate);
     }
     return map;
   }, [champions, role]);
 
+  const tiersToShow = useMemo(
+    () => tierFilter === "all" ? TIERS_DISPLAY : TIERS_DISPLAY.filter(t => t === tierFilter),
+    [tierFilter],
+  );
+
   const totalShown = useMemo(
-    () => TIERS_DISPLAY.reduce((sum, t) => sum + (byTier[t]?.length ?? 0), 0),
-    [byTier],
+    () => tiersToShow.reduce((sum, t) => sum + (byTier[t]?.length ?? 0), 0),
+    [byTier, tiersToShow],
   );
 
   return (
@@ -74,7 +89,7 @@ export function TierListView({ onSelectChampion }: TierListViewProps) {
       </div>
 
       {/* Role filter */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div className="flex gap-2 mb-3 flex-wrap">
         {ROLES.map(r => (
           <button
             key={r}
@@ -95,6 +110,44 @@ export function TierListView({ onSelectChampion }: TierListViewProps) {
         ))}
       </div>
 
+      {/* Patch / Tier / Server filters */}
+      <div className="flex gap-3 mb-5 flex-wrap items-center">
+        <span className="text-[9px] font-['Cinzel'] text-[#5B7A8C] tracking-widest uppercase">Filter:</span>
+        <select
+          value={patchFilter}
+          onChange={e => setPatchFilter(e.target.value)}
+          className="bg-[#0A1428] border border-[#1E2D3D] text-[#C8AA6E] text-[10px] font-['Cinzel'] px-2 py-1 focus:outline-none focus:border-[#785A28] cursor-pointer"
+        >
+          <option value="all">All Patches</option>
+          {patchInfo && <option value={patchInfo.displayPatch}>{patchInfo.displayPatch}</option>}
+        </select>
+        <select
+          value={tierFilter}
+          onChange={e => setTierFilter(e.target.value)}
+          className="bg-[#0A1428] border border-[#1E2D3D] text-[#C8AA6E] text-[10px] font-['Cinzel'] px-2 py-1 focus:outline-none focus:border-[#785A28] cursor-pointer"
+        >
+          <option value="all">All Tiers</option>
+          {(["SP", "S+", "S", "A+", "A", "B", "C"] as const).map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+        <select
+          value={serverFilter}
+          onChange={e => setServerFilter(e.target.value)}
+          className="bg-[#0A1428] border border-[#1E2D3D] text-[#C8AA6E] text-[10px] font-['Cinzel'] px-2 py-1 focus:outline-none focus:border-[#785A28] cursor-pointer"
+        >
+          <option value="all">All Servers</option>
+          {["NA", "KR", "EUW", "EUNE", "BR", "LAN", "LAS", "OCE", "TR", "RU", "JP"].map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        {serverFilter !== "all" && (
+          <span className="text-[9px] font-['Cinzel'] text-[#5B7A8C]">
+            (server filter — aggregated data shown)
+          </span>
+        )}
+      </div>
+
       {/* Loading state */}
       {loading && (
         <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -110,13 +163,18 @@ export function TierListView({ onSelectChampion }: TierListViewProps) {
       {/* Tier rows */}
       {!loading && (
         <div className="space-y-2">
-          {TIERS_DISPLAY.map(tier => {
+          {tiersToShow.map(tier => {
             const champs = byTier[tier] ?? [];
+            const isSP = tier === "SP";
             return (
               <div
                 key={tier}
                 className="flex items-start gap-0 rounded-sm border overflow-hidden"
-                style={{ background: TIER_BG[tier], borderColor: TIER_BORDER[tier] }}
+                style={{
+                  background: TIER_BG[tier],
+                  borderColor: TIER_BORDER[tier],
+                  ...(isSP ? { boxShadow: "0 0 12px #FFD70030, inset 0 0 20px #FFD70008" } : {}),
+                }}
               >
                 {/* Tier label column */}
                 <div
@@ -126,6 +184,10 @@ export function TierListView({ onSelectChampion }: TierListViewProps) {
                     background: TIER_COLORS[tier] + "10",
                     borderRight: `1px solid ${TIER_BORDER[tier]}`,
                     minHeight: 64,
+                    ...(isSP ? {
+                      textShadow: "0 0 12px #FFD700, 0 0 24px #FFD70080",
+                      filter: "drop-shadow(0 0 6px #FFD700)",
+                    } : {}),
                   }}
                 >
                   {tier}

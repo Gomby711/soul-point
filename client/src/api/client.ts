@@ -249,6 +249,21 @@ export function fetchSPPositions(): Promise<Record<string, { primary: string; co
   return get("/sp/positions");
 }
 
+export function fetchPatchInfo(): Promise<{ currentPatch: string; displayPatch: string; detectedAt: number; patchHistory: string[] }> {
+  return get("/sp/patch");
+}
+
+export interface ChampAggrEntry {
+  patch: string; totalGames: number; wins: number;
+  avgKills: number; avgDeaths: number; avgAssists: number;
+  avgGoldEarned: number; avgDamageDealt: number; avgDamageTaken: number;
+  avgCrowdControlScore: number;
+}
+
+export function fetchAggrStats(): Promise<Record<string, ChampAggrEntry>> {
+  return get("/sp/aggr-stats");
+}
+
 // ── Champion meta stats ──────────────────────────────────────
 
 export interface ChampMetaEntry {

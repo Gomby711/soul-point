@@ -16,9 +16,10 @@ const ROLE_LABEL_MAP: Record<string, string> = {
 };
 
 const TIER_COLORS: Record<string, string> = {
+  SP: "#FFD700",
   "S+": "#F4E070", S: "#C89B3C", "A+": "#0AC8B9", A: "#A0B4C8", B: "#5B7A8C", C: "#3a4a5a",
 };
-const TIER_ORDER: Record<string, number> = { "S+": 0, S: 1, "A+": 2, A: 3, B: 4, C: 5 };
+const TIER_ORDER: Record<string, number> = { SP: -1, "S+": 0, S: 1, "A+": 2, A: 3, B: 4, C: 5 };
 
 function champHash(name: string): number {
   let h = 5381;
@@ -196,6 +197,10 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                           color: TIER_COLORS[c.tier] ?? "#A0B4C8",
                           background: (TIER_COLORS[c.tier] ?? "#A0B4C8") + "22",
                           borderColor: (TIER_COLORS[c.tier] ?? "#A0B4C8") + "66",
+                          ...(c.tier === "SP" ? {
+                            boxShadow: `0 0 6px #FFD70080`,
+                            textShadow: `0 0 6px #FFD700`,
+                          } : {}),
                         }}
                       >
                         {c.tier}
@@ -320,7 +325,15 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                       {/* Tier */}
                       <td className="px-5 py-4 text-center">
                         <span className="font-['Cinzel'] font-bold text-sm px-2.5 py-1 rounded-sm"
-                          style={{ color: tierColor, background: tierColor + "20", border: `1px solid ${tierColor}50` }}>
+                          style={{
+                            color: tierColor,
+                            background: tierColor + "20",
+                            border: `1px solid ${tierColor}50`,
+                            ...(c.tier === "SP" ? {
+                              boxShadow: `0 0 8px ${tierColor}80`,
+                              textShadow: `0 0 8px ${tierColor}`,
+                            } : {}),
+                          }}>
                           {c.tier}
                         </span>
                       </td>
