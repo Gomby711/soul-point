@@ -144,7 +144,7 @@ function RankEmblem({ tier, size = 48 }: { tier: string; size?: number }) {
   // The CDragon emblem PNGs have ~30% transparent padding around the actual icon.
   // Render the image 1.45x larger than the container and clip with overflow:hidden
   // so the icon fills the space without any layout changes.
-  const imgSize = Math.round(size * 1.45);
+  const imgSize = Math.round(size * 2.0);
   return (
     <div style={{ width: size, height: size }} className="shrink-0 overflow-hidden flex items-center justify-center">
       <img src={src} width={imgSize} height={imgSize} className="object-contain shrink-0"
@@ -968,7 +968,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
                   </div>
                 </div>
                 <div className="pt-2 min-w-0">
-                  <h1 className="font-['Cinzel'] font-black text-base" style={{ color: "#ffffff" }}>{state.gameName}</h1>
+                  <h1 className="font-['Cinzel'] font-black text-base" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>{state.gameName || state.tagLine}</h1>
                   <div className="text-[11px] text-[#C8AA6E] font-['Cinzel'] font-bold">#{state.tagLine}</div>
                   <div className="text-[10px] text-[#A0B4C8]">{region}</div>
                 </div>

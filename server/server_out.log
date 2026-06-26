@@ -1,9 +1,9 @@
 
   ⚔  Soul Point API — http://localhost:3001
   ✓  Riot API key configured
-  ✓  Build data loaded: 151 champions covered
-     Next refresh in ~6h (or restart with a new key to trigger immediately)
 
+  📊  Soul Point Crawler starting (new API key detected)...
+     Regions: NA → KR → EUW → EUNE → BR → LAN → LAS → OCE → TR → RU → JP | 500 players × 20 matches each
   🔥  Pre-warming OP.GG cache for 25 top champions...
   ✓  OP.GG build cache warmed
 

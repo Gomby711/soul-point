@@ -11,11 +11,6 @@ interface HomeViewProps {
   onSelectChampion: (id: string) => void;
 }
 
-const RECENT_SEARCHES = [
-  { name: "Faker", tag: "T1", region: "KR" as Region },
-  { name: "Caps", tag: "G2", region: "EUW" as Region },
-  { name: "Doublelift", tag: "DL", region: "NA" as Region },
-];
 
 const HOT_PICKS = [
   { name: "Ahri",    id: "Ahri",    role: "Mid",     winRate: 53.4, pickRate: 18.2, tier: "S+", trend: "up"   },
@@ -71,18 +66,6 @@ export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
 
           <SearchBar onSearch={onSearch} />
 
-          <div className="flex items-center gap-2 mt-5 flex-wrap justify-center">
-            <span className="text-[10px] text-[#5B7A8C] font-['Cinzel'] tracking-widest">RECENT:</span>
-            {RECENT_SEARCHES.map(s => (
-              <button
-                key={s.name}
-                onClick={() => onSearch(s.name, s.tag, s.region)}
-                className="text-[10px] font-['Cinzel'] tracking-wider px-3 py-1 border border-[#1E2D3D] text-[#5B7A8C] hover:border-[#785A28] hover:text-[#C89B3C] transition-all"
-              >
-                {s.name}#{s.tag}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
