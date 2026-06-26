@@ -831,18 +831,125 @@ function SkillGrid({ order, skillOrder, champId, version }: {
   );
 }
 
+// ── Rank tier SVG emblems (inline — no CDN dependency) ────────
+function RankEmblem({ tier, size = 20 }: { tier: string; size?: number }) {
+  const s = size;
+  switch (tier) {
+    case "CHALLENGER":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 1 L5 5 L3 12 L7 19 L12 23 L17 19 L21 12 L19 5 Z" fill="#1A6B8A" stroke="#0AC8B9" strokeWidth="1"/>
+          <path d="M12 4 L7 7 L5.5 12 L8.5 17 L12 20 L15.5 17 L18.5 12 L17 7 Z" fill="#0D4A66" stroke="#4DE8D8" strokeWidth="0.5"/>
+          <path d="M9 5 L7 3 M15 5 L17 3" stroke="#F4E070" strokeWidth="1.2" strokeLinecap="round"/>
+          <circle cx="12" cy="12" r="3" fill="#0AC8B9" opacity="0.9"/>
+          <circle cx="12" cy="12" r="1.5" fill="#E0FFFC"/>
+        </svg>
+      );
+    case "GRANDMASTER":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 1 L6 5 L4 12 L8 18 L12 22 L16 18 L20 12 L18 5 Z" fill="#6B0A0A" stroke="#C83030" strokeWidth="1"/>
+          <path d="M12 4 L7.5 7.5 L6 12 L9 16.5 L12 19 L15 16.5 L18 12 L16.5 7.5 Z" fill="#4A0505" stroke="#FF5050" strokeWidth="0.5"/>
+          <path d="M9 3 L8 1 M12 2 L12 0.5 M15 3 L16 1" stroke="#F4E070" strokeWidth="1" strokeLinecap="round"/>
+          <circle cx="12" cy="12" r="3" fill="#C83030" opacity="0.9"/>
+          <circle cx="12" cy="12" r="1.5" fill="#FFA0A0"/>
+        </svg>
+      );
+    case "MASTER":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 6 L4 12 L8 18 L12 22 L16 18 L20 12 L18 6 Z" fill="#3D1060" stroke="#9B59D0" strokeWidth="1"/>
+          <path d="M12 5 L8 8 L6.5 12 L9.5 17 L12 19.5 L14.5 17 L17.5 12 L16 8 Z" fill="#280A40" stroke="#C080FF" strokeWidth="0.5"/>
+          <path d="M10 5 L11 3 L12 4 L13 3 L14 5" stroke="#F4E070" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="12" r="3" fill="#7B29C0" opacity="0.9"/>
+          <circle cx="12" cy="12" r="1.5" fill="#DDB0FF"/>
+        </svg>
+      );
+    case "DIAMOND":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 7 L4 12 L8 18 L12 22 L16 18 L20 12 L18 7 Z" fill="#0A2A5A" stroke="#5B8FD5" strokeWidth="1"/>
+          <path d="M12 5 L8 8.5 L6.5 12 L9.5 16.5 L12 19 L14.5 16.5 L17.5 12 L16 8.5 Z" fill="#061840" stroke="#90B8FF" strokeWidth="0.5"/>
+          <polygon points="12,7 15,11 12,15 9,11" fill="#5B8FD5" opacity="0.8"/>
+          <polygon points="12,9 14,11 12,13 10,11" fill="#B0D0FF" opacity="0.9"/>
+        </svg>
+      );
+    case "EMERALD":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 7 L4 13 L8 19 L12 22 L16 19 L20 13 L18 7 Z" fill="#0A3A1A" stroke="#1FA83C" strokeWidth="1"/>
+          <path d="M12 5 L8 8.5 L6.5 13 L9.5 17.5 L12 20 L14.5 17.5 L17.5 13 L16 8.5 Z" fill="#062010" stroke="#40D060" strokeWidth="0.5"/>
+          <polygon points="12,7 16,12 12,17 8,12" fill="#1FA83C" opacity="0.7"/>
+          <polygon points="12,9 14.5,12 12,15 9.5,12" fill="#70FF90" opacity="0.8"/>
+        </svg>
+      );
+    case "PLATINUM":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 7 L4 13 L8 19 L12 22 L16 19 L20 13 L18 7 Z" fill="#0A2A2A" stroke="#0AC8B9" strokeWidth="1"/>
+          <path d="M12 5 L8 8.5 L6.5 13 L9.5 17.5 L12 20 L14.5 17.5 L17.5 13 L16 8.5 Z" fill="#061A1A" stroke="#40E8D8" strokeWidth="0.5"/>
+          <path d="M9 8 L12 6 L15 8 L16 12 L15 16 L12 18 L9 16 L8 12 Z" fill="#0AC8B9" opacity="0.4"/>
+          <circle cx="12" cy="12" r="2.5" fill="#0AC8B9" opacity="0.7"/>
+          <circle cx="12" cy="12" r="1.2" fill="#A0FFF5"/>
+        </svg>
+      );
+    case "GOLD":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 7 L4 13 L8 19 L12 22 L16 19 L20 13 L18 7 Z" fill="#3A2A00" stroke="#C89B3C" strokeWidth="1"/>
+          <path d="M12 5 L8 8.5 L6.5 13 L9.5 17.5 L12 20 L14.5 17.5 L17.5 13 L16 8.5 Z" fill="#221800" stroke="#F4D060" strokeWidth="0.5"/>
+          <path d="M9 8 L12 6 L15 8 L16 12 L15 16 L12 18 L9 16 L8 12 Z" fill="#C89B3C" opacity="0.5"/>
+          <circle cx="12" cy="12" r="2.5" fill="#C89B3C" opacity="0.9"/>
+          <circle cx="12" cy="12" r="1.2" fill="#F4E070"/>
+        </svg>
+      );
+    case "SILVER":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 7 L4 13 L8 19 L12 22 L16 19 L20 13 L18 7 Z" fill="#1A2030" stroke="#7A90A8" strokeWidth="1"/>
+          <path d="M12 5 L8 8.5 L6.5 13 L9.5 17.5 L12 20 L14.5 17.5 L17.5 13 L16 8.5 Z" fill="#101520" stroke="#B0C4D8" strokeWidth="0.5"/>
+          <path d="M9 8 L12 6 L15 8 L16 12 L15 16 L12 18 L9 16 L8 12 Z" fill="#7A90A8" opacity="0.45"/>
+          <circle cx="12" cy="12" r="2.5" fill="#7A90A8" opacity="0.9"/>
+          <circle cx="12" cy="12" r="1.2" fill="#D8E8F8"/>
+        </svg>
+      );
+    case "BRONZE":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 7 L4 13 L8 19 L12 22 L16 19 L20 13 L18 7 Z" fill="#2A1500" stroke="#8B5E3C" strokeWidth="1"/>
+          <path d="M12 5 L8 8.5 L6.5 13 L9.5 17.5 L12 20 L14.5 17.5 L17.5 13 L16 8.5 Z" fill="#1A0D00" stroke="#C48050" strokeWidth="0.5"/>
+          <path d="M9 8 L12 6 L15 8 L16 12 L15 16 L12 18 L9 16 L8 12 Z" fill="#8B5E3C" opacity="0.5"/>
+          <circle cx="12" cy="12" r="2.5" fill="#8B5E3C" opacity="0.9"/>
+          <circle cx="12" cy="12" r="1.2" fill="#D4A070"/>
+        </svg>
+      );
+    case "IRON":
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L6 7 L4 13 L8 19 L12 22 L16 19 L20 13 L18 7 Z" fill="#1A1A1A" stroke="#4A4A5A" strokeWidth="1"/>
+          <path d="M12 5 L8 8.5 L6.5 13 L9.5 17.5 L12 20 L14.5 17.5 L17.5 13 L16 8.5 Z" fill="#0D0D0D" stroke="#6A6A7A" strokeWidth="0.5"/>
+          <path d="M9 8 L12 6 L15 8 L16 12 L15 16 L12 18 L9 16 L8 12 Z" fill="#4A4A5A" opacity="0.45"/>
+          <circle cx="12" cy="12" r="2.5" fill="#4A4A5A" opacity="0.9"/>
+          <circle cx="12" cy="12" r="1.2" fill="#A0A0B0"/>
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 // ── Rank dropdown (Challenger = highest, Iron = lowest) ───────
 const RANKS = [
-  { label: "Challenger",    icon: "🔥", key: "CHALLENGER"   },
-  { label: "Grandmaster+",  icon: "⚡", key: "GRANDMASTER"  },
-  { label: "Master+",       icon: "💜", key: "MASTER"       },
-  { label: "Diamond+",      icon: "💎", key: "DIAMOND"      },
-  { label: "Emerald+",      icon: "🟢", key: "EMERALD"      },
-  { label: "Platinum+",     icon: "🔵", key: "PLATINUM"     },
-  { label: "Gold+",         icon: "🟡", key: "GOLD"         },
-  { label: "Silver+",       icon: "⚪", key: "SILVER"       },
-  { label: "Bronze+",       icon: "🟤", key: "BRONZE"       },
-  { label: "Iron+",         icon: "🔩", key: "IRON"         },
+  { label: "Challenger",    key: "CHALLENGER"   },
+  { label: "Grandmaster+",  key: "GRANDMASTER"  },
+  { label: "Master+",       key: "MASTER"       },
+  { label: "Diamond+",      key: "DIAMOND"      },
+  { label: "Emerald+",      key: "EMERALD"      },
+  { label: "Platinum+",     key: "PLATINUM"     },
+  { label: "Gold+",         key: "GOLD"         },
+  { label: "Silver+",       key: "SILVER"       },
+  { label: "Bronze+",       key: "BRONZE"       },
+  { label: "Iron+",         key: "IRON"         },
 ];
 
 function RankSelect({ value, onChange }: { value: string; onChange: (l: string, k: string) => void }) {
@@ -861,7 +968,7 @@ function RankSelect({ value, onChange }: { value: string; onChange: (l: string, 
         className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A1428] border border-[#1E2D3D]
           hover:border-[#785A28] text-[11px] text-[#A0B4C8] font-['Cinzel'] tracking-wider transition-colors"
       >
-        <span>{cur.icon}</span><span>{value}</span>
+        <RankEmblem tier={cur.key} size={18} /><span>{value}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-[#5B7A8C] transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -875,7 +982,7 @@ function RankSelect({ value, onChange }: { value: string; onChange: (l: string, 
                 hover:bg-[#785A28]/20 border-b border-[#1E2D3D] last:border-0 text-left transition-colors
                 ${value === r.label ? "text-[#C89B3C]" : "text-[#5B7A8C]"}`}
             >
-              <span>{r.icon}</span><span>{r.label}</span>
+              <RankEmblem tier={r.key} size={18} /><span>{r.label}</span>
             </button>
           ))}
         </div>

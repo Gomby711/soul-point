@@ -54,8 +54,8 @@ export function NavBar({ view, setView }: NavBarProps) {
               <Zap className="w-4 h-4 text-[#010A13]" />
             </div>
           </div>
-          <span className="font-['Cinzel'] font-black text-xl gold-text tracking-widest">
-            SOUL<span className="text-white">POINT</span>
+          <span className="font-['Cinzel'] font-black text-xl tracking-widest">
+            <span className="gold-text">SOUL</span><span className="text-[#A0B4C8]">POINT</span>
           </span>
         </button>
 
