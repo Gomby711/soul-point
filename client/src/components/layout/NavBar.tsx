@@ -55,7 +55,7 @@ export function NavBar({ view, setView }: NavBarProps) {
             </div>
           </div>
           <span className="font-['Cinzel'] font-black text-xl gold-text tracking-widest">
-            SOUL<span className="text-[#A0B4C8]">POINT</span>
+            SOUL<span className="text-white">POINT</span>
           </span>
         </button>
 
