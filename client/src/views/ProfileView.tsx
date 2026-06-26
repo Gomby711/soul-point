@@ -535,21 +535,21 @@ function MatchRow({
           {items.map((id, i) => <ItemSlot key={i} itemId={id} size={26} />)}
         </div>
 
-        {/* 5v5 player names — fixed-width columns so all cards align uniformly */}
+        {/* 5v5 player names */}
         <div className="hidden xl:flex gap-1.5 ml-auto shrink-0">
-          <div className="flex flex-col gap-px w-[76px]">
+          <div className="flex flex-col gap-px w-[90px]">
             {blue.map(p => (
               <div key={p.puuid}
-                className={`text-[9px] truncate w-[76px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-[#5B7A8C]"}`}>
+                className={`text-[9px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-white"}`}>
                 {p.riotIdGameName || p.summonerName || "?"}
               </div>
             ))}
           </div>
           <div className="w-px bg-[#1E2D3D] self-stretch" />
-          <div className="flex flex-col gap-px w-[76px]">
+          <div className="flex flex-col gap-px w-[90px]">
             {red.map(p => (
               <div key={p.puuid}
-                className={`text-[9px] truncate w-[76px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-[#5B7A8C]"}`}>
+                className={`text-[9px] ${p.puuid === puuid ? "text-[#C8AA6E] font-bold" : "text-white"}`}>
                 {p.riotIdGameName || p.summonerName || "?"}
               </div>
             ))}

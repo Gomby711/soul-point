@@ -197,7 +197,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                   style={{ filter: `drop-shadow(0 0 6px ${col}66)` }}>
                   <RankEmblem tier={player.tier} size={isFirst ? 176 : 144} />
                 </div>
-                <div className="font-['Cinzel'] font-bold text-xs text-[#C8AA6E] truncate">{player.summonerName}</div>
+                <div className="font-['Cinzel'] font-bold text-xs text-white">{player.summonerName}</div>
                 <div className="font-mono text-xs mt-1 font-bold" style={{ color: col }}>
                   {player.lp.toLocaleString()} LP
                 </div>
@@ -281,7 +281,7 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-3">
                           <RankEmblem tier={e.tier} size={96} />
-                          <span className="font-['Cinzel'] text-[#C8AA6E] group-hover:text-[#F0E6BE] transition-colors truncate max-w-[160px]">
+                          <span className="font-['Cinzel'] text-white">
                             {e.summonerName}
                           </span>
                         </div>

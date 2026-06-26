@@ -51,10 +51,6 @@ export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
             backgroundSize: "56px 100px",
           }}
         />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 60%, rgba(200,155,60,0.08) 0%, transparent 70%)" }}
-        />
 
         <div className="relative z-10 flex flex-col items-center justify-center py-24 px-4 text-center">
           <div className="flex items-center gap-3 mb-6">
@@ -184,8 +180,8 @@ export function HomeView({ onSearch, onSelectChampion }: HomeViewProps) {
                   <ChampPortrait championName={p.champ} size={28} />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <div className="font-['Cinzel'] text-xs text-[#C8AA6E] truncate">{p.name}</div>
-                  <div className="text-[10px] text-[#5B7A8C]">{p.region} · {p.lp.toLocaleString()} LP</div>
+                  <div className="font-['Cinzel'] text-xs text-white">{p.name}</div>
+                  <div className="text-[10px] text-[#A0B4C8]">{p.region} · {p.lp.toLocaleString()} LP</div>
                 </div>
                 <TierBadge tier={p.tier} small />
               </div>
