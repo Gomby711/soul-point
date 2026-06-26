@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown, Sword, Zap, Shield, BookOpen, Users, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { type ChampionInfo } from "@/hooks/useChampionData";
 import { getBuild, type BuildEntry } from "@/data/builds";
 import { useRuneData, PATH_COLORS, type RunePath } from "@/hooks/useRuneData";
 import { getDragonVersion, fetchOPGGChampionAnalysis, fetchOPGGChampionBuilds, fetchChampionPatchNotes, fetchSPChampionBuilds, fetchSPAllBuilds } from "@/api/client";
 import type { ChampionSoulPoint, SoulPointBuild } from "@/api/types";
 import { winRateColor } from "@/lib/utils";
-import { RoleIcon } from "@/components/common/RoleIcon";
+import { RoleIcon, ROLE_COLORS } from "@/components/common/RoleIcon";
 
 // ── DDragon version ────────────────────────────────────────────
 function useVersion() {
@@ -1407,107 +1407,160 @@ function PatchNoteDisplay({ data, champName }: { data: unknown; champName: strin
   );
 }
 
+// ── Synergy column (OP.GG style) ──────────────────────────────
+const ALL_ROLES_ORDERED = ["Top", "Jungle", "Mid", "ADC", "Support"] as const;
+
+function SynergyColumn({
+  role, entries, onSelectChampion,
+}: {
+  role: string;
+  entries: ChampionInfo[];
+  onSelectChampion: (id: string) => void;
+}) {
+  const roleColor = ROLE_COLORS[role] ?? "#C8AA6E";
+  return (
+    <div className="flex flex-col">
+      {/* Column header */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1E2D3D]"
+        style={{ background: roleColor + "0d" }}>
+        <RoleIcon role={role} size={15} color={roleColor} />
+        <span className="text-[11px] font-['Cinzel'] font-bold tracking-wider" style={{ color: roleColor }}>
+          Synergies with {role}
+        </span>
+      </div>
+      {/* Sub-header */}
+      <div className="flex items-center px-3 py-1.5 border-b border-[#1E2D3D] bg-[#060E1A]">
+        <div className="w-5 shrink-0" />
+        <div className="w-9 shrink-0" />
+        <div className="flex-1" />
+        <div className="w-20 text-[10px] font-['Cinzel'] font-bold text-[#0AC8B9] underline text-right">Pick rate</div>
+        <div className="w-16 text-[10px] font-['Cinzel'] text-[#5B7A8C] text-right">Win rate</div>
+      </div>
+      {/* Rows */}
+      {entries.map((champ, i) => {
+        const tierColor = TIER_COLORS[champ.tier] ?? "#A0B4C8";
+        return (
+          <button
+            key={champ.id}
+            onClick={() => onSelectChampion(champ.id)}
+            className="flex items-center gap-2 px-3 py-1.5 border-b border-[#0A1428] hover:bg-[#060E1A] transition-colors last:border-0 w-full"
+          >
+            <span className="text-[10px] font-mono text-[#5B7A8C] w-5 text-right shrink-0">{i + 1}</span>
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 overflow-hidden rounded-full border border-[#1E2D3D]">
+                <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" loading="lazy" />
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 text-[7px] font-bold px-0.5 rounded-sm leading-tight"
+                style={{ color: tierColor, background: "#010A13", border: `1px solid ${tierColor}60` }}>
+                {champ.tier}
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <div className="text-[11px] font-['Cinzel'] text-[#A0B4C8] truncate">
+                {champ.name.length > 11 ? champ.name.slice(0, 10) + "…" : champ.name}
+              </div>
+            </div>
+            <div className="w-20 text-right shrink-0">
+              <div className="text-[11px] font-bold text-[#0AC8B9] font-mono">{champ.pickRate.toFixed(2)}%</div>
+              <div className="text-[9px] text-[#5B7A8C] font-mono">{champ.games.toLocaleString()}</div>
+            </div>
+            <div className="w-16 text-right shrink-0">
+              <div className="text-[11px] font-bold font-mono" style={{ color: winRateColor(champ.winRate) }}>
+                {champ.winRate.toFixed(2)}%
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Synergies tab ─────────────────────────────────────────────
 function SynergiesTab({ champion, champions, onSelectChampion, card, sectionLabel }: {
   champion: ChampionInfo; champions: ChampionInfo[];
   onSelectChampion: (id: string) => void;
   card: string; sectionLabel: string;
 }) {
-  function h(s: string) {
-    let n = 5381;
-    for (let i = 0; i < s.length; i++) n = (n * 33 ^ s.charCodeAt(i)) & 0x7fffffff;
-    return n / 0x7fffffff;
-  }
-
-  const peers = useMemo(
-    () => champions.filter(c => c.id !== champion.id && c.primaryRole !== champion.primaryRole),
-    [champions, champion],
+  const otherRoles = useMemo(
+    () => ALL_ROLES_ORDERED.filter(r => r !== champion.primaryRole),
+    [champion.primaryRole],
   );
 
-  const synergies = useMemo(() =>
-    [...peers]
-      .sort((a, b) => h(champion.name + "syn" + a.name) - h(champion.name + "syn" + b.name))
-      .slice(0, 8)
-      .map(c => ({
-        champ: c,
-        synergyScore: +(60 + h(champion.name + c.name + "score") * 30).toFixed(1),
-        winRate: +(51 + h(champion.name + c.name + "wr") * 12).toFixed(1),
-        games: Math.floor(500 + h(champion.name + c.name) * 5000),
-        synWith: c.primaryRole,
-      })),
-    [peers, champion],
-  );
+  const champsByRole = useMemo(() => {
+    const map: Record<string, ChampionInfo[]> = {};
+    for (const role of ALL_ROLES_ORDERED) {
+      map[role] = champions.filter(c => c.primaryRole === role);
+    }
+    return map;
+  }, [champions]);
 
-  const antis = useMemo(() =>
-    [...peers]
-      .sort((a, b) => h(a.name + "anti" + champion.name) - h(b.name + "anti" + champion.name))
-      .slice(0, 8)
-      .map(c => ({
-        champ: c,
-        synergyScore: +(30 + h(champion.name + c.name + "anti") * 20).toFixed(1),
-        winRate: +(45 + h(champion.name + c.name + "antiwr") * 10).toFixed(1),
-        games: Math.floor(200 + h(c.name + champion.name) * 3000),
-        synWith: c.primaryRole,
-      })),
-    [peers, champion],
-  );
+  const bestByRole = useMemo(() => {
+    const result: Record<string, ChampionInfo[]> = {};
+    for (const role of otherRoles) {
+      result[role] = [...(champsByRole[role] ?? [])]
+        .sort((a, b) => b.winRate - a.winRate)
+        .slice(0, 10);
+    }
+    return result;
+  }, [champsByRole, otherRoles]);
+
+  const poorByRole = useMemo(() => {
+    const result: Record<string, ChampionInfo[]> = {};
+    for (const role of otherRoles) {
+      result[role] = [...(champsByRole[role] ?? [])]
+        .sort((a, b) => a.winRate - b.winRate)
+        .slice(0, 10);
+    }
+    return result;
+  }, [champsByRole, otherRoles]);
+
+  const colCount = otherRoles.length;
 
   return (
     <div className="space-y-4">
-      <div className={`${card} p-5`}>
-        <div className={sectionLabel}>Best Synergies</div>
-        <p className="text-[11px] text-[#5B7A8C] mb-4">
-          Champions that perform best alongside {champion.name} in team compositions
-        </p>
-        <div className="grid grid-cols-4 gap-4">
-          {synergies.slice(0, 8).map(({ champ, synergyScore, winRate: synWR, games }) => (
-            <button
-              key={champ.id}
-              onClick={() => onSelectChampion(champ.id)}
-              className="flex flex-col items-center gap-2 p-3 border border-[#1E2D3D] hover:border-[#0AC8B9] transition-colors group"
-              style={{ background: "#060E1A" }}
-            >
-              <div className="w-14 h-14 overflow-hidden border border-[#1E2D3D] group-hover:border-[#0AC8B9]">
-                <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="text-[10px] font-['Cinzel'] text-[#C8AA6E] truncate w-full text-center">{champ.name}</div>
-              <div className="text-[9px] text-[#5B7A8C]">{champ.primaryRole}</div>
-              <div className="flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-[#0AC8B9]" />
-                <span className="text-xs font-mono font-bold" style={{ color: winRateColor(synWR) }}>{synWR}%</span>
-              </div>
-              <div className="text-[9px] text-[#5B7A8C] font-mono">{(games / 1000).toFixed(1)}k games</div>
-              <div className="w-full bg-[#1E2D3D] h-1">
-                <div className="h-1 bg-[#0AC8B9]" style={{ width: `${synergyScore}%` }} />
-              </div>
-            </button>
+      {/* Best Synergies */}
+      <div className={card}>
+        <div className="px-5 py-3 border-b border-[#1E2D3D] flex items-center gap-3 flex-wrap">
+          <span className="font-['Cinzel'] text-xs tracking-widest text-[#785A28] uppercase">Best Synergies</span>
+          <span className="text-[11px] text-[#5B7A8C]">
+            Top 10 highest win rate allies for each role
+          </span>
+        </div>
+        <div
+          className="grid divide-x divide-[#1E2D3D]"
+          style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}
+        >
+          {otherRoles.map(role => (
+            <SynergyColumn
+              key={role}
+              role={role}
+              entries={bestByRole[role] ?? []}
+              onSelectChampion={onSelectChampion}
+            />
           ))}
         </div>
       </div>
 
-      <div className={`${card} p-5`}>
-        <div className={sectionLabel}>Poor Synergies</div>
-        <p className="text-[11px] text-[#5B7A8C] mb-4">
-          Champions that tend to underperform with {champion.name}
-        </p>
-        <div className="grid grid-cols-4 gap-4">
-          {antis.slice(0, 8).map(({ champ, winRate: antiWR, games }) => (
-            <button
-              key={champ.id}
-              onClick={() => onSelectChampion(champ.id)}
-              className="flex flex-col items-center gap-2 p-3 border border-[#1E2D3D] hover:border-[#FF4E50] transition-colors group"
-              style={{ background: "#060E1A" }}
-            >
-              <div className="w-14 h-14 overflow-hidden border border-[#1E2D3D] group-hover:border-[#FF4E50] opacity-80">
-                <img src={champ.imageUrl} alt={champ.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="text-[10px] font-['Cinzel'] text-[#A0B4C8] truncate w-full text-center">{champ.name}</div>
-              <div className="text-[9px] text-[#5B7A8C]">{champ.primaryRole}</div>
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-mono font-bold" style={{ color: winRateColor(antiWR) }}>{antiWR}%</span>
-              </div>
-              <div className="text-[9px] text-[#5B7A8C] font-mono">{(games / 1000).toFixed(1)}k games</div>
-            </button>
+      {/* Poor Synergies */}
+      <div className={card}>
+        <div className="px-5 py-3 border-b border-[#1E2D3D] flex items-center gap-3 flex-wrap">
+          <span className="font-['Cinzel'] text-xs tracking-widest text-[#785A28] uppercase">Poor Synergies</span>
+          <span className="text-[11px] text-[#5B7A8C]">
+            Bottom 10 lowest win rate allies for each role
+          </span>
+        </div>
+        <div
+          className="grid divide-x divide-[#1E2D3D]"
+          style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}
+        >
+          {otherRoles.map(role => (
+            <SynergyColumn
+              key={role}
+              role={role}
+              entries={poorByRole[role] ?? []}
+              onSelectChampion={onSelectChampion}
+            />
           ))}
         </div>
       </div>
@@ -1616,7 +1669,7 @@ function CountersDetailTab({
               <div className="w-20 h-20 overflow-hidden rounded-full border-4" style={{ borderColor: OUR_COLOR }}>
                 <img src={champion.imageUrl} alt={champion.name} className="w-full h-full object-cover" />
               </div>
-              <div className="font-bold font-mono text-xl" style={{ color: OUR_COLOR }}>{matchup.ourWr}%</div>
+              <div className="font-bold font-mono text-xl" style={{ color: matchup.ourWr >= 50 ? "#0AC8B9" : "#FF4E50" }}>{matchup.ourWr}%</div>
               <div className="px-5 py-0.5 text-[10px] font-bold text-white font-['Cinzel'] text-center"
                 style={{ background: OUR_COLOR }}>{champion.name}</div>
             </div>
@@ -1691,9 +1744,9 @@ function CountersDetailTab({
           {filteredChamps.map(champ => {
             const sel   = champ.id === selectedId;
             const key   = `${champion.name}::${champ.name}`;
-            const ourWr   = +(43 + h(key + "wr") * 14).toFixed(2);
-            const theirWr = +(100 - ourWr).toFixed(2);
-            const games   = Math.floor(800 + h(key) * 4200);
+            const ourWr = +(43 + h(key + "wr") * 14).toFixed(2);
+            const games = Math.floor(800 + h(key) * 4200);
+            const wrColor = ourWr >= 50 ? "#0AC8B9" : "#FF4E50";
             return (
               <button
                 key={champ.id}
@@ -1714,8 +1767,8 @@ function CountersDetailTab({
                   </div>
                 </div>
                 <div className="w-16 text-right">
-                  <span className="text-xs font-mono font-bold" style={{ color: winRateColor(theirWr) }}>
-                    {theirWr}%
+                  <span className="text-xs font-mono font-bold" style={{ color: wrColor }}>
+                    {ourWr}%
                   </span>
                 </div>
                 <div className="w-14 text-right">
