@@ -141,9 +141,13 @@ function RuneIcon({ perkId, runeMap, size = 16 }: { perkId?: number; runeMap: Ma
 function RankEmblem({ tier, size = 48 }: { tier: string; size?: number }) {
   const t = tier?.toLowerCase();
   const src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${t}.png`;
+  // The CDragon emblem PNGs have ~30% transparent padding around the actual icon.
+  // Render the image 1.45x larger than the container and clip with overflow:hidden
+  // so the icon fills the space without any layout changes.
+  const imgSize = Math.round(size * 1.45);
   return (
-    <div style={{ width: size, height: size }} className="shrink-0 flex items-center justify-center">
-      <img src={src} width={size} height={size} className="object-contain"
+    <div style={{ width: size, height: size }} className="shrink-0 overflow-hidden flex items-center justify-center">
+      <img src={src} width={imgSize} height={imgSize} className="object-contain shrink-0"
         onError={e => { (e.target as HTMLImageElement).style.opacity = "0.3"; }} />
     </div>
   );
