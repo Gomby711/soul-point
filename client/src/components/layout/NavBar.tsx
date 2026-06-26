@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sword, Target, Crown, BarChart2, Map, Zap } from "lucide-react";
+import { Sword, Target, Crown, BarChart2, Map } from "lucide-react";
 import type { View } from "@/App";
 import { getDragonVersion } from "@/api/client";
 
@@ -46,14 +46,7 @@ export function NavBar({ view, setView }: NavBarProps) {
       <div className="w-full px-6 flex items-center" style={{ height: "60px" }}>
         {/* Logo — absolute far left */}
         <button onClick={() => setView("home")} className="flex items-center gap-2.5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
-          <div className="relative w-8 h-8">
-            <div
-              className="hex-clip w-full h-full flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,#C89B3C,#785A28)" }}
-            >
-              <Zap className="w-4 h-4 text-[#010A13]" />
-            </div>
-          </div>
+          <img src="/logo.png" alt="Soul Point" className="w-10 h-10 object-contain" />
           <span className="font-['Cinzel'] font-black text-xl tracking-widest">
             <span className="gold-text">SOUL</span><span className="text-[#A0B4C8]">POINT</span>
           </span>
