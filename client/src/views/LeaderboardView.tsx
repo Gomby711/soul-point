@@ -280,7 +280,6 @@ export function LeaderboardView({ onSearch }: { onSearch: (name: string, tag: st
                       {/* Summoner */}
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-3">
-                          <RankEmblem tier={e.tier} size={96} />
                           <span className="font-['Cinzel'] text-white">
                             {e.summonerName}
                           </span>

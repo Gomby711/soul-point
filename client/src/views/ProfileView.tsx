@@ -598,9 +598,9 @@ function RankSidebarCard({ label, entry }: { label: string; entry: LeagueEntry |
         <div className="text-[9px] text-[#5B7A8C] font-mono">{entry.wins}W {entry.losses}L</div>
       </div>
 
-      <div className="flex flex-col items-center mb-3">
-        <RankEmblem tier={entry.tier} size={160} />
-        <div className="text-center mt-2">
+      <div className="flex flex-col items-center mb-1">
+        <RankEmblem tier={entry.tier} size={240} />
+        <div className="text-center mt-0.5">
           <div className="font-['Cinzel'] font-black text-lg" style={{ color: col }}>
             {tierLabel} {entry.rank}
           </div>
@@ -683,8 +683,8 @@ function TFTSidebarCard({ tft }: { tft: { tier: string; rank: string; lp: number
         <div className="text-[11px] font-['Cinzel'] font-bold text-[#C8AA6E]">TFT Ranked</div>
         <Crown className="w-3.5 h-3.5" style={{ color: col }} />
       </div>
-      <div className="flex flex-col items-center mb-2">
-        <RankEmblem tier={tft.tier} size={140} />
+      <div className="flex flex-col items-center mb-1">
+        <RankEmblem tier={tft.tier} size={220} />
         <div className="text-center mt-2">
           <div className="font-['Cinzel'] font-bold text-sm" style={{ color: col }}>{tft.tier} {tft.rank}</div>
           <div className="font-mono text-xs text-[#C89B3C]">{tft.lp} LP</div>
@@ -949,7 +949,7 @@ export function ProfileView({ gameName, tagLine, region, onSearch }: ProfileView
                   </div>
                 </div>
                 <div className="pt-2 min-w-0">
-                  <h1 className="font-['Cinzel'] font-black text-base text-[#F0E6BE]">{state.gameName}</h1>
+                  <h1 className="font-['Cinzel'] font-black text-base text-white">{state.gameName}</h1>
                   <div className="text-[11px] text-[#C8AA6E] font-['Cinzel'] font-bold">#{state.tagLine}</div>
                   <div className="text-[10px] text-[#A0B4C8]">{region}</div>
                 </div>
