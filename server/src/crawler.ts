@@ -9,8 +9,8 @@ const DATA_DIR = path.join(__dirname, "../data");
 
 // Boots — excluded from core item grouping
 const BOOT_IDS = new Set([3006, 3009, 3020, 3047, 3111, 3117, 3158, 1001]);
-// Trinkets — excluded
-const TRINKET_IDS = new Set([3340, 3348, 3364, 2422, 4642, 4004, 4643, 4645]);
+// Trinkets — excluded (only the 3 actual trinket-slot items; do NOT add finished items here)
+const TRINKET_IDS = new Set([3340, 3348, 3364]);
 
 export interface BuildEntry {
   wins: number;

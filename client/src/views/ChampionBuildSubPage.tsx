@@ -230,6 +230,17 @@ function spBuildToEntry(
   const primaryRunes   = sp.runes.slice(0, 4).map(id => runeNameMap.get(id) ?? String(id));
   const secondaryRunes = sp.runes.slice(4, 6).map(id => runeNameMap.get(id) ?? String(id));
 
+  // Map SP core items; when fewer than 3 exist (sparse data), fill with
+  // archetype-appropriate items from the static template so the build never
+  // shows fewer than 3 finished items.
+  const spItemRefs = sp.coreItems.map(id => ({ id, name: `Item ${id}` }));
+  const mergedItems = spItemRefs.length >= 3
+    ? spItemRefs
+    : [
+        ...spItemRefs,
+        ...template.items.filter(ti => !spItemRefs.some(si => si.id === ti.id)),
+      ].slice(0, Math.max(5, template.items.length));
+
   return {
     ...template,
     buildName:   sp.label,
@@ -238,7 +249,7 @@ function spBuildToEntry(
     winRate:     parseFloat((sp.winRate * 100).toFixed(1)),
     pickRate:    parseFloat((sp.pickRate * 100).toFixed(1)),
     games:       sp.games,
-    items:       sp.coreItems.map(id => ({ id, name: `Item ${id}` })),
+    items:       mergedItems,
     runes: {
       keystone:       keystoneName,
       primary:        primaryPath?.name ?? sp.primaryPathName,
@@ -290,7 +301,12 @@ function mergeOPGGBuild(
     pickRate: avg ? +(avg.pick_rate * 100).toFixed(1) : staticBuild.pickRate,
     games:    avg?.play ?? staticBuild.games,
     boots,
-    items:         coreItems.length ? coreItems : staticBuild.items,
+    items: coreItems.length >= 3
+      ? coreItems
+      : [
+          ...coreItems,
+          ...staticBuild.items.filter(ti => !coreItems.some(ci => ci.id === ti.id)),
+        ].slice(0, Math.max(3, staticBuild.items.length)),
     startItems:    starters.length  ? starters  : staticBuild.startItems,
     runes, spells, spellIds, skillOrder, levelOrder,
     fourthOptions: fourthOptions.length ? fourthOptions : staticBuild.fourthOptions,
