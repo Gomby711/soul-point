@@ -178,7 +178,7 @@ export default function App() {
             />
           )}
           {view === "leaderboard" && <LeaderboardView onSearch={handleSearch} />}
-          {view === "tierlist" && <TierListView />}
+          {view === "tierlist" && <TierListView onSelectChampion={handleSelectChampion} />}
           {view === "patch" && <PatchView />}
         </ErrorBoundary>
       </main>

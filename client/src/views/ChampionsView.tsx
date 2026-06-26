@@ -166,6 +166,19 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
                         onError={e => { (e.target as HTMLImageElement).style.opacity = "0.2"; }}
                       />
                     </div>
+                    {/* Tier badge top-left */}
+                    {c.tier && (
+                      <div
+                        className="absolute -top-1 -left-1 w-5 h-5 flex items-center justify-center text-[8px] font-['Cinzel'] font-black rounded-sm border"
+                        style={{
+                          color: TIER_COLORS[c.tier] ?? "#A0B4C8",
+                          background: (TIER_COLORS[c.tier] ?? "#A0B4C8") + "22",
+                          borderColor: (TIER_COLORS[c.tier] ?? "#A0B4C8") + "66",
+                        }}
+                      >
+                        {c.tier}
+                      </div>
+                    )}
                     {/* Role icon badge */}
                     <div className="absolute -bottom-1 -right-1">
                       <RoleBadge role={c.primaryRole} size={22} />
