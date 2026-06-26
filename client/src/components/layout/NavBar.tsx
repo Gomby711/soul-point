@@ -43,18 +43,18 @@ export function NavBar({ view, setView }: NavBarProps) {
         className="h-px w-full"
         style={{ background: "linear-gradient(90deg,transparent,#785A28 30%,#C89B3C 50%,#785A28 70%,transparent)" }}
       />
-      <div className="w-full px-8 flex items-center" style={{ height: "72px" }}>
+      <div className="w-full px-6 flex items-center" style={{ height: "60px" }}>
         {/* Logo — absolute far left */}
-        <button onClick={() => setView("home")} className="flex items-center gap-3 shrink-0">
-          <div className="relative w-10 h-10">
+        <button onClick={() => setView("home")} className="flex items-center gap-2.5 shrink-0">
+          <div className="relative w-8 h-8">
             <div
               className="hex-clip w-full h-full flex items-center justify-center"
               style={{ background: "linear-gradient(135deg,#C89B3C,#785A28)" }}
             >
-              <Zap className="w-5 h-5 text-[#010A13]" />
+              <Zap className="w-4 h-4 text-[#010A13]" />
             </div>
           </div>
-          <span className="font-['Cinzel'] font-black text-2xl gold-text tracking-widest">
+          <span className="font-['Cinzel'] font-black text-xl gold-text tracking-widest">
             SOUL<span className="text-[#A0B4C8]">POINT</span>
           </span>
         </button>
@@ -67,15 +67,15 @@ export function NavBar({ view, setView }: NavBarProps) {
               <button
                 key={id}
                 onClick={() => setView(id)}
-                className={`group flex items-center gap-2 px-6 py-3 text-base font-['Cinzel'] tracking-widest transition-all relative ${
+                className={`group flex items-center gap-1.5 px-5 py-2.5 text-sm font-['Cinzel'] tracking-widest transition-all relative ${
                   view === id ? "text-[#C89B3C]" : "text-[#5B7A8C] hover:text-[#A0B4C8]"
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4" />
                 {label}
                 {view === id && (
                   <div
-                    className="absolute bottom-0 left-0 right-0 h-[3px]"
+                    className="absolute bottom-0 left-0 right-0 h-[2px]"
                     style={{ background: "linear-gradient(90deg,transparent,#C89B3C,transparent)" }}
                   />
                 )}
@@ -84,14 +84,14 @@ export function NavBar({ view, setView }: NavBarProps) {
           </nav>
 
           {/* Divider */}
-          <div className="hidden md:block w-px h-8 bg-[#1E2D3D] mx-5" />
+          <div className="hidden md:block w-px h-6 bg-[#1E2D3D] mx-4" />
 
           {/* Patch + Season badges — far top right */}
           <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm font-mono font-bold text-[#C89B3C] border border-[#785A28]/70 bg-[#785A28]/12 px-4 py-1.5 tracking-widest">
+            <span className="text-xs font-mono font-bold text-[#C89B3C] border border-[#785A28]/70 bg-[#785A28]/10 px-3 py-1 tracking-widest">
               {patch}
             </span>
-            <span className="text-sm font-mono font-bold text-[#0AC8B9] border border-[#0AC8B9]/40 bg-[#0AC8B9]/8 px-4 py-1.5 tracking-widest">
+            <span className="text-xs font-mono font-bold text-[#0AC8B9] border border-[#0AC8B9]/40 bg-[#0AC8B9]/8 px-3 py-1 tracking-widest">
               {season}
             </span>
           </div>
