@@ -181,6 +181,16 @@ function useOPGGMultipleBuilds(champName: string, position: string) {
 // ── Soul Point (crawler) build hook ───────────────────────────
 const _spCache: Record<string, ChampionSoulPoint | null> = {};
 
+// Called by ChampionsView on mount to bulk-populate the cache so every champion
+// page renders instantly without a per-champion network round-trip.
+export function prewarmSPCache(builds: ChampionSoulPoint[]): void {
+  for (const b of builds) {
+    if (!Object.prototype.hasOwnProperty.call(_spCache, b.champion)) {
+      _spCache[b.champion] = b;
+    }
+  }
+}
+
 function useSPBuilds(champId: string): { data: ChampionSoulPoint | null; loading: boolean } {
   const [data, setData] = useState<ChampionSoulPoint | null>(_spCache[champId] ?? null);
   const [loading, setLoading] = useState(!Object.prototype.hasOwnProperty.call(_spCache, champId));
@@ -222,12 +232,13 @@ function spBuildToEntry(
 
   return {
     ...template,
-    buildName:  sp.label,
-    buildDesc:  `Live match data · ${Math.round(sp.winRate * 100)}% WR · ${sp.games}g`,
-    winRate:    parseFloat((sp.winRate * 100).toFixed(1)),
-    pickRate:   parseFloat((sp.pickRate * 100).toFixed(1)),
-    games:      sp.games,
-    items:      sp.coreItems.map(id => ({ id, name: `Item ${id}` })),
+    buildName:   sp.label,
+    buildDesc:   `Live match data · ${Math.round(sp.winRate * 100)}% WR · ${sp.games}g`,
+    recommended: sp.recommended ?? false,
+    winRate:     parseFloat((sp.winRate * 100).toFixed(1)),
+    pickRate:    parseFloat((sp.pickRate * 100).toFixed(1)),
+    games:       sp.games,
+    items:       sp.coreItems.map(id => ({ id, name: `Item ${id}` })),
     runes: {
       keystone:       keystoneName,
       primary:        primaryPath?.name ?? sp.primaryPathName,
@@ -1604,14 +1615,20 @@ function RunePathToggle({
               borderBottom: selected ? `3px solid ${pColor}` : "3px solid transparent",
             }}
           >
-            {selected && (
-              <div className="absolute top-2 right-2">
+            <div className="absolute top-2 right-2 flex gap-1">
+              {b.recommended && (
+                <span className="text-[8px] font-['Cinzel'] tracking-widest border px-1.5 py-0.5"
+                  style={{ color: "#C89B3C", borderColor: "#C89B3C50", background: "#C89B3C12" }}>
+                  RECOMMENDED
+                </span>
+              )}
+              {selected && (
                 <span className="text-[8px] font-['Cinzel'] tracking-widest border px-1.5 py-0.5"
                   style={{ color: pColor, borderColor: pColor + "50", background: pColor + "12" }}>
                   ACTIVE
                 </span>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Path icon with keystone badge */}
             <div className="relative">

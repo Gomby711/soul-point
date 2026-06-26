@@ -278,7 +278,7 @@ async function runCrawl(opts: CrawlJob) {
   const platUrl = platformUrl(region);
   const regUrl = regionalUrl(region);
 
-  // ── Phase 1: Collect PUUIDs from Challenger → GM → Master ──
+  // ── Phase 1: Collect PUUIDs from Challenger → GM → Master → Diamond → Emerald ──
   crawlStatus.message = `[${region}] Fetching high-elo player list...`;
   const puuids: string[] = [];
   const tiers = ["challengerleagues", "grandmasterleagues", "masterleagues"] as const;
@@ -297,6 +297,28 @@ async function runCrawl(opts: CrawlJob) {
       crawlStatus.message = `[${region}] Seeded ${puuids.length} players from ${tier.replace("leagues", "")}...`;
     } catch (e) {
       console.error(`[Crawler] [${region}] Failed ${tier}:`, (e as Error).message);
+    }
+  }
+
+  // Pad with Diamond/Emerald players to maximise champion pool diversity
+  if (puuids.length < playerCount) {
+    const emeraldTierUrls = [
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/I?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/II?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/EMERALD/I?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/EMERALD/I?page=2`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/EMERALD/II?page=1`,
+    ];
+    for (const url of emeraldTierUrls) {
+      if (puuids.length >= playerCount) break;
+      try {
+        const entries = await throttle(url, apiKey) as Array<{ puuid?: string }>;
+        for (const e of entries) {
+          if (e.puuid && !puuids.includes(e.puuid) && puuids.length < playerCount)
+            puuids.push(e.puuid);
+        }
+        crawlStatus.message = `[${region}] Expanded to ${puuids.length} Emerald+ players...`;
+      } catch { /* non-fatal */ }
     }
   }
 
@@ -421,18 +443,25 @@ async function runCrawl(opts: CrawlJob) {
     crawlStatus.message = `[${region}] Coverage boost: ${underCount} champions below ${MIN_GAMES_PER_CHAMP}-game target...`;
 
     const extraPuuids: string[] = [];
-    for (const div of ["I", "II", "III", "IV"] as const) {
-      if (extraPuuids.length >= 100) break;
+    const coverageUrls = [
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/I?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/II?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/III?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/IV?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/EMERALD/I?page=1`,
+      `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/EMERALD/II?page=1`,
+    ];
+    for (const url of coverageUrls) {
+      if (extraPuuids.length >= 150) break;
       try {
-        const url = `${platUrl}/lol/league/v4/entries/RANKED_SOLO_5x5/DIAMOND/${div}?page=1`;
         const entries = await throttle(url, apiKey) as Array<{ puuid?: string }>;
         for (const e of entries) {
-          if (e.puuid && !puuids.includes(e.puuid) && extraPuuids.length < 100) {
+          if (e.puuid && !puuids.includes(e.puuid) && extraPuuids.length < 150) {
             extraPuuids.push(e.puuid);
           }
         }
       } catch (e) {
-        console.error(`[Crawler] [${region}] Diamond ${div} fetch failed:`, (e as Error).message);
+        console.error(`[Crawler] [${region}] Coverage boost fetch failed:`, (e as Error).message);
       }
     }
 

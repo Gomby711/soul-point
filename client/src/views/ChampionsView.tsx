@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Search, ArrowUp, ArrowDown } from "lucide-react";
 import { winRateColor } from "@/lib/utils";
 import { useChampionData, type ChampionInfo, type PrimaryRole } from "@/hooks/useChampionData";
-import { ChampionBuildSubPage, prefetchOPGGBuild } from "@/views/ChampionBuildSubPage";
+import { ChampionBuildSubPage, prefetchOPGGBuild, prewarmSPCache } from "@/views/ChampionBuildSubPage";
+import { fetchSPAllBuilds } from "@/api/client";
 import { RoleIcon, RoleBadge } from "@/components/common/RoleIcon";
 
 interface MatchupEntry { champ: ChampionInfo; winRate: number }
@@ -43,6 +44,11 @@ export function ChampionsView({ initialChampionId, onNavigateToChampion }: Champ
   useEffect(() => {
     if (initialChampionId) setSelectedId(initialChampionId);
   }, [initialChampionId]);
+
+  // Pre-warm SP build cache so every champion sub-page shows data instantly
+  useEffect(() => {
+    fetchSPAllBuilds().then(prewarmSPCache).catch(() => {});
+  }, []);
 
   // These useMemo calls MUST stay here — before the conditional return below
   const leftFiltered = useMemo(() => {

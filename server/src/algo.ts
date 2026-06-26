@@ -84,6 +84,7 @@ function buildLabel(rank: number, winRate: number, normPickRate: number): string
 export interface SoulPointBuild {
   rank: number;
   label: string;
+  recommended: boolean;
   coreItems: number[];
   keystoneId: number;
   keystoneName: string;
@@ -142,6 +143,8 @@ function computeForChampion(
     .map((b, i): SoulPointBuild => ({
       rank:              i + 1,
       label:             buildLabel(i + 1, b.winRate, b.normPR),
+      // "recommended" = highest-scored build with both solid win rate and meaningful pick rate
+      recommended:       i === 0 && b.winRate >= 0.50 && b.normPR >= 0.10,
       coreItems:         b.coreItems,
       keystoneId:        b.keystoneId,
       keystoneName:      KEYSTONE_NAMES[b.keystoneId] ?? `Keystone ${b.keystoneId}`,

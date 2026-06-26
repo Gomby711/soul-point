@@ -35,6 +35,7 @@ export interface BuildEntry {
   rankLabel: string;
   buildName: string;
   buildDesc: string;
+  recommended?: boolean;
   winRate: number;
   pickRate: number;
   games: number;

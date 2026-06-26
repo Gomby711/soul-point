@@ -194,6 +194,7 @@ export interface DragonItem {
 export interface SoulPointBuild {
   rank: number;
   label: string;
+  recommended: boolean;
   coreItems: number[];
   keystoneId: number;
   keystoneName: string;

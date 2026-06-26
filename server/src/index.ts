@@ -539,10 +539,59 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
+// NA + KR lead the rotation so they get fresh data first; all regions follow
 const CRAWL_REGIONS = ["NA", "KR", "EUW", "EUNE", "BR", "LAN", "LAS", "OCE", "TR", "RU", "JP"];
-const CRAWL_PLAYER_COUNT = 300;
+const CRAWL_PLAYER_COUNT = 500; // max allowed; pulls Chall/GM/Master + Diamond/Emerald padding
 const CRAWL_MATCHES_PER = 20;
 const RECRAWL_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+// ── OP.GG cache pre-warm ─────────────────────────────────────
+// Pre-populates the NodeCache for the top meta champions so the first
+// user to open each champion page gets instant build data, not a cold MCP call.
+
+async function prewarmOPGGCache() {
+  try {
+    const OPGG_POS_KEYS: Record<string, string> = {
+      Top: "top", Jungle: "jungle", Mid: "mid", ADC: "adc", Support: "support",
+    };
+    const positions = ["Top", "Jungle", "Mid", "ADC", "Support"] as const;
+    const seen = new Set<string>();
+    const topChamps: Array<{ name: string; position: string }> = [];
+
+    // Pull meta list for each lane to find the highest pick-rate champions
+    for (const pos of positions) {
+      const meta = await fetchLaneMetaChampions(pos, "EMERALD").catch(() => null) as {
+        data?: { positions?: Record<string, Array<{ champion: string; pick_rate?: number }>> }
+      } | null;
+      const posKey = OPGG_POS_KEYS[pos];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const entries: any[] = meta?.data?.positions?.[posKey] ?? [];
+      const sorted = [...entries]
+        .sort((a, b) => (b.pick_rate ?? 0) - (a.pick_rate ?? 0))
+        .slice(0, 6);
+      for (const e of sorted) {
+        if (e.champion && !seen.has(e.champion)) {
+          seen.add(e.champion);
+          topChamps.push({ name: e.champion, position: pos });
+        }
+        if (topChamps.length >= 25) break;
+      }
+      if (topChamps.length >= 25) break;
+    }
+
+    if (topChamps.length === 0) return;
+    console.log(`  🔥  Pre-warming OP.GG cache for ${topChamps.length} top champions...`);
+
+    // Hit the cached HTTP route so NodeCache is populated for incoming users
+    const base = `http://localhost:${PORT}`;
+    for (const { name, position } of topChamps) {
+      const url = `${base}/api/opgg/champion/${encodeURIComponent(name)}/${encodeURIComponent(position)}/builds`;
+      await fetch(url).catch(() => null);
+      await new Promise(r => setTimeout(r, 300)); // gentle pacing — don't flood MCP
+    }
+    console.log("  ✓  OP.GG build cache warmed\n");
+  } catch { /* non-fatal — warm cache is best-effort */ }
+}
 
 async function autoStartCrawlIfNeeded() {
   if (!KEY) return;
@@ -580,6 +629,8 @@ app.listen(PORT, async () => {
   } else {
     console.log("  ✓  Riot API key configured");
     await autoStartCrawlIfNeeded();
+    // Warm OP.GG cache in background without blocking startup
+    setTimeout(() => prewarmOPGGCache().catch(() => {}), 5000);
 
     // Schedule periodic re-crawl every 6 hours to keep data fresh
     setInterval(async () => {
